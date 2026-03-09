@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+
+<html lang="es">
+
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>CarlosTech Login</title>
+
+<style>
+
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
+font-family:system-ui;
+}
+
+body{
+
+height:100vh;
+
+display:flex;
+justify-content:center;
+align-items:center;
+
+background:linear-gradient(135deg,#020617,#0f172a,#020617);
+
+color:white;
+
+}
+
+/* TARJETA LOGIN */
+
+.login-container{
+
+width:380px;
+
+padding:45px;
+
+background:rgba(15,23,42,0.9);
+
+border-radius:20px;
+
+backdrop-filter:blur(10px);
+
+box-shadow:0 20px 60px rgba(0,0,0,0.6);
+
+animation:fade 0.8s ease;
+
+}
+
+/* LOGO */
+
+.logo{
+
+text-align:center;
+
+font-size:28px;
+
+font-weight:700;
+
+margin-bottom:10px;
+
+color:#22c55e;
+
+}
+
+.subtitle{
+
+text-align:center;
+
+font-size:14px;
+
+opacity:0.6;
+
+margin-bottom:25px;
+
+}
+
+/* INPUTS */
+
+input{
+
+width:100%;
+
+padding:14px;
+
+margin-bottom:15px;
+
+border:none;
+
+border-radius:10px;
+
+background:#020617;
+
+color:white;
+
+font-size:14px;
+
+outline:none;
+
+}
+
+/* BOTON */
+
+button{
+
+width:100%;
+
+padding:14px;
+
+border:none;
+
+border-radius:12px;
+
+background:linear-gradient(90deg,#22c55e,#4ade80);
+
+font-weight:600;
+
+cursor:pointer;
+
+color:#020617;
+
+transition:0.2s;
+
+}
+
+button:hover{
+
+transform:scale(1.03);
+
+}
+
+/* ERROR */
+
+.error{
+
+color:#ef4444;
+
+margin-top:12px;
+
+text-align:center;
+
+font-size:14px;
+
+}
+
+/* FOOTER */
+
+.footer{
+
+margin-top:25px;
+
+text-align:center;
+
+font-size:12px;
+
+opacity:0.5;
+
+}
+
+/* ANIMATION */
+
+@keyframes fade{
+
+from{
+opacity:0;
+transform:translateY(20px);
+}
+
+to{
+opacity:1;
+transform:translateY(0);
+}
+
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="login-container">
+
+<div class="logo">
+CarlosTech
+</div>
+
+<div class="subtitle">
+Motor matemático inteligente
+</div>
+
+<form method="POST">
+
+<input name="username" placeholder="Usuario">
+
+<input name="password" type="password" placeholder="Contraseña">
+
+<button>Entrar</button>
+
+</form>
+
+{% if error %}
+
+<p class="error">{{ error }}</p>
+{% endif %}
+
+<div class="footer">
+CarlosTech AI © 2026
+</div>
+
+</div>
+
+</body>
+
+</html>

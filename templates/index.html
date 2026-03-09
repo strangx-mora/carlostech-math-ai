@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>CarlosTech Math AI</title>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mathquill@0.10.1/build/mathquill.css">
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mathquill@0.10.1/build/mathquill.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+<style>
+
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
+font-family:system-ui;
+}
+
+body{
+background:#020617;
+color:white;
+display:flex;
+height:100vh;
+}
+
+/* SIDEBAR */
+
+.sidebar{
+width:230px;
+background:#020617;
+border-right:1px solid rgba(255,255,255,0.05);
+padding:30px;
+}
+
+.logo{
+font-size:20px;
+font-weight:600;
+margin-bottom:40px;
+}
+
+.nav a{
+display:block;
+margin-bottom:20px;
+color:white;
+text-decoration:none;
+opacity:0.8;
+}
+
+/* MAIN */
+
+.main{
+flex:1;
+padding:50px;
+overflow:auto;
+}
+
+.title{
+font-size:42px;
+margin-bottom:10px;
+}
+
+.subtitle{
+opacity:0.6;
+margin-bottom:30px;
+}
+
+/* CARD */
+
+.card{
+background:#0f172a;
+padding:35px;
+border-radius:18px;
+max-width:900px;
+}
+
+/* INPUT */
+
+.input-area{
+display:flex;
+align-items:center;
+justify-content:center;
+gap:10px;
+margin-bottom:20px;
+}
+
+.integral{
+font-size:60px;
+}
+
+.mathbox{
+background:white;
+color:black;
+padding:20px;
+font-size:30px;
+border-radius:10px;
+min-width:400px;
+}
+
+.dx{
+font-size:28px;
+}
+
+/* LIMITES */
+
+.limites{
+display:flex;
+gap:10px;
+margin-bottom:20px;
+}
+
+.limites input{
+padding:10px;
+border:none;
+border-radius:6px;
+width:120px;
+}
+
+/* KEYBOARD */
+
+.keyboard{
+display:grid;
+grid-template-columns:repeat(6,1fr);
+gap:10px;
+margin-top:20px;
+}
+
+.key{
+background:#020617;
+padding:12px;
+border-radius:8px;
+cursor:pointer;
+text-align:center;
+}
+
+.key:hover{
+background:#1e293b;
+}
+
+/* BUTTON */
+
+.solve{
+margin-top:25px;
+padding:16px;
+width:100%;
+font-size:18px;
+border:none;
+border-radius:10px;
+background:linear-gradient(90deg,#22c55e,#4ade80);
+cursor:pointer;
+}
+
+/* RESULT */
+
+.result{
+margin-top:25px;
+font-size:26px;
+background:#020617;
+padding:20px;
+border-radius:10px;
+}
+
+.steps{
+margin-top:20px;
+background:#020617;
+padding:20px;
+border-radius:10px;
+line-height:1.7;
+}
+
+.paso{
+opacity:0;
+transform:translateY(10px);
+animation:aparecer 0.5s forwards;
+margin-bottom:12px;
+}
+
+@keyframes aparecer{
+to{
+opacity:1;
+transform:translateY(0);
+}
+}
+
+</style>
+
+</head>
+
+<body>
+
+<div class="sidebar">
+
+<div class="logo">CarlosTech</div>
+
+<div class="nav">
+<a href="#" onclick="modoIntegral()">Integrales</a>
+<a href="#">Gráficas</a>
+</div>
+
+</div>
+
+<div class="main">
+
+<div class="title">Motor Matemático IA</div>
+<div class="subtitle">Resuelve integrales paso a paso</div>
+
+<div class="card">
+
+<div class="input-area">
+
+<div class="integral">∫</div>
+
+<div id="math-input" class="mathbox"></div>
+
+<div class="dx">dx</div>
+
+</div>
+
+<div class="limites">
+
+<input id="limiteA" placeholder="Límite inferior">
+
+<input id="limiteB" placeholder="Límite superior">
+
+</div>
+
+<div class="keyboard">
+
+<div class="key" onclick="insert('x')">x</div>
+<div class="key" onclick="insert('^2')">x²</div>
+<div class="key" onclick="insert('^3')">x³</div>
+<div class="key" onclick="insert('\\frac{}{}')">a/b</div>
+<div class="key" onclick="insert('\\sqrt{}')">√</div>
+<div class="key" onclick="insert('\\pi')">π</div>
+
+<div class="key" onclick="insert('+')">+</div>
+<div class="key" onclick="insert('-')">−</div>
+<div class="key" onclick="insert('*')">×</div>
+<div class="key" onclick="insert('/')">÷</div>
+<div class="key" onclick="insert('\\sin')">sin</div>
+<div class="key" onclick="insert('\\cos')">cos</div>
+
+</div>
+
+<button class="solve" onclick="resolver()">Resolver Integral</button>
+
+<div id="resultado" class="result"></div>
+
+<div id="pasos" class="steps"></div>
+
+</div>
+
+</div>
+
+<script>
+
+var MQ = MathQuill.getInterface(2);
+
+var mathField = MQ.MathField(document.getElementById('math-input'));
+
+function insert(val){
+mathField.write(val);
+mathField.focus();
+}
+
+function resolver(){
+
+let latex = mathField.latex();
+
+let a = document.getElementById("limiteA").value;
+
+let b = document.getElementById("limiteB").value;
+
+fetch("/resolver",{
+
+method:"POST",
+
+headers:{
+"Content-Type":"application/json"
+},
+
+body:JSON.stringify({
+integral:latex,
+a:a,
+b:b
+})
+
+})
+
+.then(res=>res.json())
+
+.then(data=>{
+
+document.getElementById("resultado").innerHTML=data.resultado;
+
+mostrarPasosAnimados(data.pasos);
+
+MathJax.typeset();
+
+})
+
+}
+
+function mostrarPasosAnimados(pasosHTML){
+
+let contenedor = document.getElementById("pasos");
+
+contenedor.innerHTML="";
+
+let pasos = pasosHTML.split("<br>");
+
+let i=0;
+
+function mostrar(){
+
+if(i>=pasos.length) return;
+
+let div=document.createElement("div");
+
+div.className="paso";
+
+div.innerHTML=pasos[i];
+
+contenedor.appendChild(div);
+
+MathJax.typeset();
+
+i++;
+
+setTimeout(mostrar,800);
+
+}
+
+mostrar();
+
+}
+
+function modoDerivada(){
+    let modo = "integral";
+
+modo="derivada";
+
+document.querySelector(".title").innerText="Calcular Derivada";
+
+}
+
+function modoIntegral(){
+
+modo="integral";
+
+document.querySelector(".title").innerText="Resolver Integral";
+
+}
+
+</script>
+
+</body>
+
+</html>
