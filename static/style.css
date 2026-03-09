@@ -1,76 +1,329 @@
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
+font-family:system-ui;
+}
+
 body{
 
-background:#0f172a;
+background:#020617;
 color:white;
-font-family:Arial;
+min-height:100vh;
+
 display:flex;
-justify-content:center;
-align-items:center;
-height:100vh;
 
 }
 
-.container{
+/* SIDEBAR */
 
-background:#1e293b;
+.sidebar{
+
+width:240px;
+background:#020617;
+padding:30px;
+
+border-right:1px solid rgba(255,255,255,0.05);
+
+}
+
+.sidebar h2{
+
+margin-bottom:30px;
+
+}
+
+.sidebar a{
+
+display:block;
+margin-bottom:15px;
+text-decoration:none;
+color:white;
+opacity:0.8;
+
+}
+
+.sidebar a:hover{
+opacity:1;
+}
+
+/* MAIN */
+
+.main{
+
+flex:1;
 padding:40px;
-border-radius:15px;
-width:600px;
-text-align:center;
 
 }
+
+/* TITLES */
+
+.title{
+
+font-size:42px;
+margin-bottom:10px;
+
+}
+
+.subtitle{
+
+opacity:0.6;
+margin-bottom:30px;
+
+}
+
+/* CARD */
+
+.card{
+
+background:#0f172a;
+padding:35px;
+border-radius:18px;
+max-width:900px;
+
+}
+
+/* MATH INPUT */
 
 .mathbox{
 
 background:white;
 color:black;
+
 padding:20px;
+
 font-size:30px;
+
 border-radius:10px;
-margin-bottom:20px;
+
+min-height:60px;
+
+overflow-x:auto;
 
 }
 
-button{
+/* LIMIT INPUTS */
 
-padding:15px 25px;
+.limites{
+
+margin-top:15px;
+display:flex;
+gap:10px;
+
+}
+
+.limites input{
+
+padding:10px;
+border:none;
+border-radius:6px;
+width:120px;
+font-size:16px;
+
+}
+
+/* BUTTON */
+
+.solve{
+
+margin-top:25px;
+padding:16px;
+width:100%;
 font-size:18px;
-background:#22c55e;
 border:none;
 border-radius:10px;
-color:white;
+
+background:linear-gradient(90deg,#22c55e,#4ade80);
+
 cursor:pointer;
 
 }
 
-#resultado{
+/* RESULT */
 
-font-size:30px;
-margin-top:20px;
+.result{
+
+margin-top:25px;
+font-size:26px;
+
+background:#020617;
+padding:20px;
+border-radius:10px;
 
 }
+
+/* STEPS */
+
+.steps{
+
+margin-top:20px;
+
+background:#020617;
+padding:20px;
+
+border-radius:10px;
+
+line-height:1.7;
+
+}
+
 .paso{
 
 opacity:0;
 transform:translateY(10px);
-animation:aparecer 0.5s forwards;
+
+animation:fade 0.5s forwards;
+
 margin-bottom:12px;
 
 }
 
-@keyframes aparecer{
+@keyframes fade{
 
 to{
+
 opacity:1;
 transform:translateY(0);
+
 }
 
 }
-.error{
 
-color:#ef4444;
-margin-top:12px;
+/* KEYBOARD */
+
+.keyboard{
+
+margin-top:20px;
+
+display:grid;
+grid-template-columns:repeat(8,1fr);
+gap:8px;
+
+}
+
+.key{
+
+background:#020617;
+padding:12px;
+border-radius:8px;
+cursor:pointer;
 text-align:center;
-font-size:14px;
+font-size:15px;
+
+}
+
+.key:hover{
+
+background:#1e293b;
+
+}
+
+/* MENU BUTTON */
+
+.menu-btn{
+
+display:none;
+
+position:fixed;
+
+top:15px;
+left:15px;
+
+background:#0f172a;
+
+padding:10px 14px;
+
+border-radius:8px;
+
+cursor:pointer;
+
+z-index:1100;
+
+}
+
+/* TABLET */
+
+@media (max-width:900px){
+
+.keyboard{
+grid-template-columns:repeat(6,1fr);
+}
+
+}
+
+/* MOBILE */
+
+@media (max-width:800px){
+
+.menu-btn{
+display:block;
+}
+
+.sidebar{
+
+position:fixed;
+
+left:-260px;
+top:0;
+
+height:100vh;
+width:260px;
+
+transition:0.3s;
+
+z-index:1000;
+
+}
+
+.sidebar.active{
+left:0;
+}
+
+.main{
+
+margin-left:0;
+width:100%;
+
+padding:20px;
+
+}
+
+.title{
+font-size:32px;
+}
+
+.mathbox{
+font-size:24px;
+}
+
+.limites{
+flex-direction:column;
+}
+
+.limites input{
+width:100%;
+}
+
+.keyboard{
+grid-template-columns:repeat(4,1fr);
+}
+
+}
+
+/* SMALL MOBILE */
+
+@media (max-width:420px){
+
+.keyboard{
+grid-template-columns:repeat(3,1fr);
+}
+
+.title{
+font-size:28px;
+}
+
+.mathbox{
+font-size:22px;
+}
 
 }
