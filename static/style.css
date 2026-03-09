@@ -142,3 +142,61 @@ width:100%;
 }
 
 }
+input, textarea, button {
+font-size:16px;
+}
+
+/* IPHONE RESPONSIVE */
+
+@media (max-width:430px){
+
+body{
+padding:10px;
+}
+
+.container{
+width:100%;
+}
+
+.editor{
+padding:15px;
+}
+
+.mathbox{
+font-size:22px;
+padding:12px;
+min-height:60px;
+}
+
+.result{
+font-size:20px;
+}
+
+.steps{
+font-size:14px;
+}
+
+.solve{
+padding:14px;
+font-size:15px;
+}
+
+.keyboard{
+grid-template-columns:repeat(4,1fr);
+gap:6px;
+}
+
+.key{
+padding:12px;
+font-size:14px;
+}
+
+.limites{
+flex-direction:column;
+}
+
+.limites input{
+width:100%;
+}
+
+}
