@@ -74,3 +74,71 @@ text-align:center;
 font-size:14px;
 
 }
+/* RESPONSIVE MOBILE */
+
+@media (max-width:900px){
+
+.container{
+width:100%;
+padding:15px;
+}
+
+.editor{
+padding:20px;
+}
+
+.mathbox{
+font-size:24px;
+padding:15px;
+}
+
+.result{
+font-size:22px;
+}
+
+}
+
+/* MOBILE */
+
+@media (max-width:600px){
+
+.header{
+padding:0 15px;
+}
+
+.logo{
+font-size:18px;
+}
+
+.keyboard{
+grid-template-columns:repeat(4,1fr);
+gap:6px;
+}
+
+.key{
+padding:12px;
+font-size:14px;
+}
+
+.solve{
+font-size:15px;
+padding:12px;
+}
+
+.result{
+font-size:20px;
+}
+
+.steps{
+font-size:14px;
+}
+
+.limites{
+flex-direction:column;
+}
+
+.limites input{
+width:100%;
+}
+
+}
