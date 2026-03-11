@@ -54,40 +54,71 @@ class IntegralSolver:
         self.start_time = time.time()
         
     def parse_input(self):
-        """Parse varios formatos de entrada"""
+        """Parse varios formatos de entrada - MEJORADO"""
         try:
             expr_text = self.expr_str.strip()
             
             # Eliminar ∫ y dx si existen
             expr_text = re.sub(r'∫\s*', '', expr_text)
             expr_text = re.sub(r'd[a-zA-Z]\s*$', '', expr_text)
+            expr_text = re.sub(r'\s+', '', expr_text)  # Eliminar espacios
             
             # Conversiones básicas
             expr_text = expr_text.replace("^", "**")
             expr_text = expr_text.replace("{", "(").replace("}", ")")
             
-            # LaTeX a sympy
+            # LaTeX fracciones ANTES de otras sustituciones
             expr_text = re.sub(r'\\frac\{([^}]+)\}\{([^}]+)\}', r'(\1)/(\2)', expr_text)
-            expr_text = re.sub(r'\\sin\s*\(', 'sin(', expr_text)
-            expr_text = re.sub(r'\\cos\s*\(', 'cos(', expr_text)
-            expr_text = re.sub(r'\\tan\s*\(', 'tan(', expr_text)
-            expr_text = re.sub(r'\\sqrt\s*\{', 'sqrt(', expr_text)
-            expr_text = re.sub(r'\\log\s*\(', 'log(', expr_text)
+            
+            # LaTeX funciones - SER CUIDADOSO CON "e"
+            expr_text = re.sub(r'\\sin\(', 'sin(', expr_text)
+            expr_text = re.sub(r'\\cos\(', 'cos(', expr_text)
+            expr_text = re.sub(r'\\tan\(', 'tan(', expr_text)
+            expr_text = re.sub(r'\\sqrt\{', 'sqrt(', expr_text)
+            expr_text = re.sub(r'\\log\(', 'log(', expr_text)
             expr_text = expr_text.replace("\\ln", "log")
-            expr_text = expr_text.replace("ln", "log")
+            expr_text = expr_text.replace("ln(", "log(")
+            
+            # Reemplazar π
             expr_text = expr_text.replace("π", "pi")
-            expr_text = expr_text.replace("e", "E")
             expr_text = expr_text.replace("∞", "oo")
             
-            # Espacios
-            expr_text = expr_text.replace(" ", "")
+            # Reemplazar "e" SOLO si es número de Euler aislado, no parte de función
+            # Buscar patrones como "e" seguido por operador o fin de string, pero NO en "exp"
+            expr_text = re.sub(r'\be([+\-*/()\^])', r'E\1', expr_text)
+            expr_text = re.sub(r'\be$', 'E', expr_text)
+            
+            # Arreglar multiplicación implícita
+            # Número seguido de letra: 2x -> 2*x
+            expr_text = re.sub(r'(\d)([a-zA-Z])', r'\1*\2', expr_text)
+            # Paréntesis seguido de letra: (x)sin -> (x)*sin
+            expr_text = re.sub(r'(\))([a-zA-Z])', r'\1*\2', expr_text)
+            # Letra seguida de paréntesis (pero NO si es función conocida)
+            funciones = ['sin', 'cos', 'tan', 'log', 'sqrt', 'exp', 'sinh', 'cosh', 'tanh', 'asin', 'acos', 'atan']
+            patron_funciones = '|'.join(funciones)
+            expr_text = re.sub(rf'([a-zA-Z])(\()', lambda m: m.group(1) + '*(' if not any(m.group(1).endswith(f) for f in funciones) else m.group(0), expr_text)
+            
+            # Paréntesis seguido de paréntesis: (x)(y) -> (x)*(y)
+            expr_text = re.sub(r'(\))(\()', r'\1*\2', expr_text)
             
             # Parse con transformaciones
             transformations = (
                 standard_transformations + 
                 (implicit_multiplication_application, convert_xor)
             )
-            self.expr = parse_expr(expr_text, local_dict={'E': E}, transformations=transformations)
+            
+            # Crear diccionario local con constantes
+            local_dict = {
+                'E': E,
+                'pi': pi,
+                'oo': oo,
+                'sin': sin, 'cos': cos, 'tan': tan,
+                'sinh': sinh, 'cosh': cosh, 'tanh': tanh,
+                'asin': asin, 'acos': acos, 'atan': atan,
+                'exp': exp, 'log': log, 'sqrt': sqrt,
+            }
+            
+            self.expr = parse_expr(expr_text, local_dict=local_dict, transformations=transformations)
             self.steps.append(f"✓ Expresión parseada: ${latex(self.expr)}$")
             return True
             
