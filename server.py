@@ -103,7 +103,32 @@ def latex_to_sympy(latex_expr):
         # Multiplicación implícita
         expr = re.sub(r'(\d)([a-zA-Z])', r'\1*\2', expr)
         expr = re.sub(r'(\))(\()', r'\1*\2', expr)
-        expr = re.sub(r'(\d)(\()', r'\1*\2' (MathWay style)"""
+        expr = re.sub(r'(\d)(\()', r'\1*\2', expr)
+        expr = re.sub(r'(\))([a-zA-Z])', r'\1*\2', expr)
+        
+        # Limpiar símbolos especiales
+        expr = expr.replace("π", "pi")
+        expr = expr.replace("e", str(E))
+        
+        # Parsear con transformaciones
+        transformations = standard_transformations + (implicit_multiplication_application,)
+        result = parse_expr(expr, transformations=transformations)
+        
+        return result
+    except Exception as e:
+        raise ValueError(f"No se pudo parsear la expresión: {latex_expr}\nError: {str(e)}")
+
+def limpiar(expr):
+    """Función auxiliar para compatibilidad"""
+    return latex_to_sympy(expr)
+
+
+# ====================================
+# GENERAR PASOS
+# ====================================
+
+def pasos_integral(expr, resultado, a=None, b=None):
+    """Genera pasos detallados tipo premium (MathWay style)"""
     
     # Detectar tipo de integral
     tipo = "General"
@@ -195,45 +220,14 @@ def latex_to_sympy(latex_expr):
         html_pasos += "$$\\int f(x)\\,dx = " + latex(resultado) + " + C$$"
         html_pasos += "<p style='font-size: 0.9em; color: #94a3b8;'>C = constante de integración arbitraria</p>"
     
-    html_pasos += "</div>"elif expr.has(exp):
-        tipo = 'Exponencial'
-        regla = '∫eˣ dx = eˣ + C'
-    elif expr.has(log):
-        tipo = 'Logarítmica'
-        regla = '∫ln(x) dx = x·ln(x) - x + C'
-    else:
-        tipo = 'General'
-        regla = 'Integración simbólica'
-    
-    # Construir HTML
-    html_pasos = ""
-    html_pasos += "<div class='paso-premium'><h3>🔍 Tipo</h3><p>" + tipo + "</p></div>"
-    html_pasos += "<div class='paso-premium'><h3>📝 Función</h3>$$f(x) = " + latex(expr) + "$$</div>"
-    html_pasos += "<div class='paso-premium'><h3>📐 Regla</h3>$$" + regla + "$$</div>"
-    
-    html_pasos += "<div class='paso-premium resultado-final'>"
-    html_pasos += "<h3>✅ Resultado</h3>"
-    
-    if a is not None and b is not None:
-        html_pasos += "$$\\int_{" + latex(a) + "}^{" + latex(b) + "} f(x)\\,dx = " + latex(resultado) + "$$"
-        html_pasos += "<p class='desc'>Integral definida evaluada</p>"
-    else:
-        html_pasos += "$$\\int f(x)\\,dx = " + latex(resultado) + " + C$$"
-        html_pasos += "<p class='desc'>C = constante de integración</p>"
-    
+    html_pasos += "</div>"
     html_pasos += "</div>"
     
     return html_pasos
 
 
-# -----------------------------
-# PAGINA
-# -----------------------------
+# ====================================
 
-
-# -----------------------------
-# RESOLVER INTEGRAL
-# -----------------------------
 
 @app.route("/resolver", methods=["POST"])
 @login_required
