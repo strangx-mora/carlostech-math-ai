@@ -148,9 +148,22 @@ function resolver(){
 
 let latex = mathField.latex();
 
-let a = document.getElementById("limiteA").value;
+if(!latex || latex.trim() === ""){
 
-let b = document.getElementById("limiteB").value;
+alert("Por favor ingresa una expresión");
+
+return;
+
+}
+
+let a = document.getElementById("limiteA").value || null;
+
+let b = document.getElementById("limiteB").value || null;
+
+// Mostrar estado de carga
+document.getElementById("resultado").innerHTML = "<p style='color: #94a3b8;'>⏳ Resolviendo...</p>";
+document.getElementById("pasos").innerHTML = "";
+document.getElementById("grafica").innerHTML = "";
 
 fetch("/resolver",{
 
@@ -172,7 +185,7 @@ b:b
 
 .then(data=>{
 
-document.getElementById("resultado").innerHTML=data.resultado;
+document.getElementById("resultado").innerHTML = data.resultado || data.error || "Error desconocido";
 
 if(data.pasos){
 
@@ -183,7 +196,16 @@ mostrarPasos(data.pasos);
 // Graficar la función
 graficarFuncion(latex, a, b);
 
+// Renderizar ecuaciones MathJax
 MathJax.typeset();
+
+})
+
+.catch(err=>{
+
+console.error("Error:", err);
+document.getElementById("resultado").innerHTML = "<p style='color: #ff6b6b;'>❌ Error en la solicitud</p>";
+document.getElementById("pasos").innerHTML = `<p style='color: #fca5a5;'>${err.message}</p>`;
 
 })
 
@@ -214,6 +236,7 @@ b:b
 if(data.error){
 
 console.error("Error en gráfica:", data.error);
+document.getElementById("grafica").innerHTML = `<p style='color: #fca5a5; padding: 20px;'>⚠️ No se pudo graficar: ${data.error}</p>`;
 return;
 
 }
@@ -224,40 +247,44 @@ x: data.x,
 y: data.y,
 mode: 'lines',
 name: 'f(x)',
-line: {color: '#3b82f6', width: 3}
+line: {color: '#3b82f6', width: 3},
+hovertemplate: '<b>x:</b> %{x:.4f}<br><b>f(x):</b> %{y:.4f}<extra></extra>'
 };
 
 let traces = [trace];
 
 // Si hay límites definidos, agregar el relleno
-if(data.a !== null && data.b !== null){
+if(data.a !== null && data.b !== null && typeof data.a === 'number' && typeof data.b === 'number'){
 
-let a = data.a;
-let b = data.b;
+let a_val = data.a;
+let b_val = data.b;
 
 // Crear puntos para llenar el área
-let x_fill = data.x.filter(x => x >= a && x <= b);
-if(x_fill.length > 0){
-
+let x_fill = [];
 let y_fill = [];
+
 for(let i = 0; i < data.x.length; i++){
 
-if(data.x[i] >= a && data.x[i] <= b){
+if(data.x[i] >= a_val && data.x[i] <= b_val && data.y[i] !== null && isFinite(data.y[i])){
 
+x_fill.push(data.x[i]);
 y_fill.push(data.y[i]);
 
 }
 
 }
 
+if(x_fill.length > 0){
+
 let fillTrace = {
 x: x_fill,
 y: y_fill,
 fill: 'tozeroy',
-fillcolor: 'rgba(59, 130, 246, 0.2)',
+fillcolor: 'rgba(59, 130, 246, 0.25)',
 line: {color: 'rgba(59, 130, 246, 0)'},
 showlegend: true,
-name: 'Área integral'
+name: 'Área integral',
+hoverinfo: 'skip'
 };
 
 traces.push(fillTrace);
@@ -267,22 +294,36 @@ traces.push(fillTrace);
 }
 
 let layout = {
-title: {text: '📊 Gráfica de la función'},
-xaxis: {title: 'x'},
-yaxis: {title: 'f(x)'},
-plot_bgcolor: 'rgba(15, 23, 42, 0.5)',
+title: {text: '📊 Gráfica de la Función', font: {color: '#e0e7ff', size: 18}},
+xaxis: {
+title: 'x',
+color: '#cbd5e1',
+gridcolor: 'rgba(226, 232, 240, 0.1)',
+zeroline: true,
+zerolinecolor: 'rgba(226, 232, 240, 0.2)'
+},
+yaxis: {
+title: 'f(x)',
+color: '#cbd5e1',
+gridcolor: 'rgba(226, 232, 240, 0.1)',
+zeroline: true,
+zerolinecolor: 'rgba(226, 232, 240, 0.2)'
+},
+plot_bgcolor: 'rgba(15, 23, 42, 0.6)',
 paper_bgcolor: 'rgba(30, 41, 59, 0.8)',
-font: {color: '#cbd5e1'},
-margin: {t: 40, l: 60, r: 40, b: 60}
+font: {color: '#cbd5e1', family: "'Segoe UI', 'Roboto', sans-serif"},
+hovermode: 'closest',
+margin: {t: 50, l: 70, r: 50, b: 70}
 };
 
-Plotly.newPlot('grafica', traces, layout, {responsive: true});
+Plotly.newPlot('grafica', traces, layout, {responsive: true, displayModeBar: true});
 
 })
 
 .catch(err=>{
 
 console.error("Error al graficar:", err);
+document.getElementById("grafica").innerHTML = `<p style='color: #fca5a5; padding: 20px;'>⚠️ Error: ${err.message}</p>`;
 
 })
 
@@ -292,13 +333,13 @@ function mostrarPasos(pasosHTML){
 
 let contenedor=document.getElementById("pasos");
 
-contenedor.innerHTML="<h2 style='color: #3b82f6; margin-bottom: 20px;'>📚 Pasos Detallados</h2>";
+contenedor.innerHTML="<div style='color: #3b82f6; margin-bottom: 25px;'><h2 style='font-size: 22px; font-weight: 700; margin-bottom: 10px;'>📚 Pasos Detallados</h2><p style='color: #94a3b8; font-size: 14px;'>Motor Matemático Premium</p></div>";
 
 // Mostrar los pasos como HTML completo
 contenedor.innerHTML += pasosHTML;
 
 // Re-renderizar las ecuaciones
-MathJax.typeset();
+setTimeout(() => MathJax.typeset(), 100);
 
 }
 
