@@ -149,84 +149,73 @@ function resolver(){
 let latex = mathField.latex();
 
 if(!latex || latex.trim() === ""){
-
-alert("Por favor ingresa una expresión");
-
-return;
-
+  alert("Por favor ingresa una expresión");
+  return;
 }
 
 let a = document.getElementById("limiteA").value || null;
-
 let b = document.getElementById("limiteB").value || null;
 
 // Mostrar estado de carga
-document.getElementById("resultado").innerHTML = "<p style='color: #94a3b8;'>⏳ Resolviendo...</p>";
+document.getElementById("resultado").innerHTML = "<p style='color: #94a3b8;'>⏳ Resolviendo con motor avanzado...</p>";
 document.getElementById("pasos").innerHTML = "";
 document.getElementById("grafica").innerHTML = "";
 
-fetch("/resolver",{
-
-method:"POST",
-
-headers:{
-"Content-Type":"application/json"
-},
-
-body:JSON.stringify({
-integral:latex,
-a:a,
-b:b
-})
-
+fetch("/api/resolver",{
+  method:"POST",
+  headers:{
+    "Content-Type":"application/json"
+  },
+  body:JSON.stringify({
+    integral:latex,
+    a:a,
+    b:b
+  })
 })
 
 .then(res=>res.json())
 
 .then(data=>{
+  if(!data.success){
+    document.getElementById("resultado").innerHTML = `<p style='color: #ff6b6b;'>❌ ${data.error || 'Error desconocido'}</p>`;
+    if(data.errors && data.errors.length > 0){
+      document.getElementById("pasos").innerHTML = `<div class='error'><p>${data.errors.join('<br>')}</p></div>`;
+    }
+    return;
+  }
 
-document.getElementById("resultado").innerHTML = data.resultado || data.error || "Error desconocido";
+  document.getElementById("resultado").innerHTML = `<div class='resultado-box'>$$${data.result}$$</div>`;
 
-if(data.pasos){
+  if(data.steps && data.steps.length > 0){
+    mostrarPasos(data.steps, data.method_detected, data.computation_time);
+  }
 
-mostrarPasos(data.pasos);
+  // Graficar la función
+  graficarFuncion(latex, a, b);
 
-}
-
-// Graficar la función
-graficarFuncion(latex, a, b);
-
-// Renderizar ecuaciones MathJax
-MathJax.typeset();
-
+  // Renderizar math
+  MathJax.typeset();
 })
 
 .catch(err=>{
-
-console.error("Error:", err);
-document.getElementById("resultado").innerHTML = "<p style='color: #ff6b6b;'>❌ Error en la solicitud</p>";
-document.getElementById("pasos").innerHTML = `<p style='color: #fca5a5;'>${err.message}</p>`;
-
+  console.error("Error:", err);
+  document.getElementById("resultado").innerHTML = "<p style='color: #ff6b6b;'>❌ Error en la solicitud</p>";
 })
 
 }
 
 function graficarFuncion(latex, a, b){
 
-fetch("/graficar",{
-
-method:"POST",
-
-headers:{
-"Content-Type":"application/json"
-},
-
-body:JSON.stringify({
-integral:latex,
-a:a,
-b:b
-})
-
+fetch("/api/graficar",{
+  method:"POST",
+  headers:{
+    "Content-Type":"application/json"
+  },
+  body:JSON.stringify({
+    integral:latex,
+    a:a,
+    b:b
+  })
 })
 
 .then(res=>res.json())
@@ -234,86 +223,68 @@ b:b
 .then(data=>{
 
 if(data.error){
-
-console.error("Error en gráfica:", data.error);
-document.getElementById("grafica").innerHTML = `<p style='color: #fca5a5; padding: 20px;'>⚠️ No se pudo graficar: ${data.error}</p>`;
-return;
-
+  console.error("Error:", data.error);
+  return;
 }
 
-// Crear la traza de la función
+// Crear traza
 let trace = {
-x: data.x,
-y: data.y,
-mode: 'lines',
-name: 'f(x)',
-line: {color: '#3b82f6', width: 3},
-hovertemplate: '<b>x:</b> %{x:.4f}<br><b>f(x):</b> %{y:.4f}<extra></extra>'
+  x: data.x,
+  y: data.y,
+  mode: 'lines',
+  name: 'f(x)',
+  line: {color: '#3b82f6', width: 3},
+  hovertemplate: '<b>x:</b> %{x:.4f}<br><b>f(x):</b> %{y:.4f}<extra></extra>'
 };
 
 let traces = [trace];
 
-// Si hay límites definidos, agregar el relleno
+// Relleno si hay límites
 if(data.a !== null && data.b !== null && typeof data.a === 'number' && typeof data.b === 'number'){
+  let a_val = data.a;
+  let b_val = data.b;
+  let x_fill = [];
+  let y_fill = [];
 
-let a_val = data.a;
-let b_val = data.b;
+  for(let i = 0; i < data.x.length; i++){
+    if(data.x[i] >= a_val && data.x[i] <= b_val && data.y[i] !== null && isFinite(data.y[i])){
+      x_fill.push(data.x[i]);
+      y_fill.push(data.y[i]);
+    }
+  }
 
-// Crear puntos para llenar el área
-let x_fill = [];
-let y_fill = [];
-
-for(let i = 0; i < data.x.length; i++){
-
-if(data.x[i] >= a_val && data.x[i] <= b_val && data.y[i] !== null && isFinite(data.y[i])){
-
-x_fill.push(data.x[i]);
-y_fill.push(data.y[i]);
-
-}
-
-}
-
-if(x_fill.length > 0){
-
-let fillTrace = {
-x: x_fill,
-y: y_fill,
-fill: 'tozeroy',
-fillcolor: 'rgba(59, 130, 246, 0.25)',
-line: {color: 'rgba(59, 130, 246, 0)'},
-showlegend: true,
-name: 'Área integral',
-hoverinfo: 'skip'
-};
-
-traces.push(fillTrace);
-
-}
-
+  if(x_fill.length > 0){
+    let fillTrace = {
+      x: x_fill,
+      y: y_fill,
+      fill: 'tozeroy',
+      fillcolor: 'rgba(59, 130, 246, 0.25)',
+      line: {color: 'rgba(59, 130, 246, 0)'},
+      showlegend: true,
+      name: 'Área integral',
+      hoverinfo: 'skip'
+    };
+    traces.push(fillTrace);
+  }
 }
 
 let layout = {
-title: {text: '📊 Gráfica de la Función', font: {color: '#e0e7ff', size: 18}},
-xaxis: {
-title: 'x',
-color: '#cbd5e1',
-gridcolor: 'rgba(226, 232, 240, 0.1)',
-zeroline: true,
-zerolinecolor: 'rgba(226, 232, 240, 0.2)'
-},
-yaxis: {
-title: 'f(x)',
-color: '#cbd5e1',
-gridcolor: 'rgba(226, 232, 240, 0.1)',
-zeroline: true,
-zerolinecolor: 'rgba(226, 232, 240, 0.2)'
-},
-plot_bgcolor: 'rgba(15, 23, 42, 0.6)',
-paper_bgcolor: 'rgba(30, 41, 59, 0.8)',
-font: {color: '#cbd5e1', family: "'Segoe UI', 'Roboto', sans-serif"},
-hovermode: 'closest',
-margin: {t: 50, l: 70, r: 50, b: 70}
+  title: {text: '📊 Gráfica de la Función', font: {color: '#e0e7ff', size: 18}},
+  xaxis: {
+    title: 'x',
+    color: '#cbd5e1',
+    gridcolor: 'rgba(226, 232, 240, 0.1)',
+  },
+  yaxis: {
+    title: 'f(x)',
+    color: '#cbd5e1',
+    gridcolor: 'rgba(226, 232, 240, 0.1)',
+  },
+  plot_bgcolor: 'rgba(15, 23, 42, 0.6)',
+  paper_bgcolor: 'rgba(30, 41, 59, 0.8)',
+  font: {color: '#cbd5e1', family: "'Segoe UI', 'Roboto', sans-serif"},
+  hovermode: 'closest',
+  margin: {t: 50, l: 70, r: 50, b: 70}
 };
 
 Plotly.newPlot('grafica', traces, layout, {responsive: true, displayModeBar: true});
@@ -321,24 +292,34 @@ Plotly.newPlot('grafica', traces, layout, {responsive: true, displayModeBar: tru
 })
 
 .catch(err=>{
-
-console.error("Error al graficar:", err);
-document.getElementById("grafica").innerHTML = `<p style='color: #fca5a5; padding: 20px;'>⚠️ Error: ${err.message}</p>`;
-
+  console.error("Error:", err);
 })
 
 }
 
-function mostrarPasos(pasosHTML){
+function mostrarPasos(steps, method, time){
 
-let contenedor=document.getElementById("pasos");
+let contenedor = document.getElementById("pasos");
 
-contenedor.innerHTML="<div style='color: #3b82f6; margin-bottom: 25px;'><h2 style='font-size: 22px; font-weight: 700; margin-bottom: 10px;'>📚 Pasos Detallados</h2><p style='color: #94a3b8; font-size: 14px;'>Motor Matemático Premium</p></div>";
+let html = `<div style='color: #3b82f6; margin-bottom: 25px;'>
+  <h2 style='font-size: 22px; font-weight: 700; margin-bottom: 10px;'>📚 Pasos Detallados</h2>
+  <p style='color: #94a3b8; font-size: 14px;'>
+    <strong>${method}</strong> | Tiempo: ${time}
+  </p>
+</div>`;
 
-// Mostrar los pasos como HTML completo
-contenedor.innerHTML += pasosHTML;
+if(steps && steps.length > 0){
+  steps.forEach((step, idx) => {
+    html += `<div class='paso-premium' style='animation-delay: ${idx * 0.1}s;'>
+      <div class='paso-content'>${step}</div>
+    </div>`;
+  });
+} else {
+  html += "<p style='color: #94a3b8;'>Sin pasos detallados</p>";
+}
 
-// Re-renderizar las ecuaciones
+contenedor.innerHTML = html;
+
 setTimeout(() => MathJax.typeset(), 100);
 
 }
