@@ -17,6 +17,15 @@
 
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 
+<!-- PLOTLY PARA GRÁFICAS -->
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+
+<style>
+input::placeholder{
+  color:rgba(226, 232, 240, 0.4);
+}
+</style>
+
 </head>
 
 <body>
@@ -34,6 +43,10 @@
 <a href="#" onclick="modoIntegral()">Integrales</a>
 
 <a href="#">Gráficas</a>
+
+<hr style="margin: 20px 0; border: none; border-top: 1px solid rgba(255,255,255,0.1);">
+
+<a href="/logout" style="color: #ff6b6b;">🚪 Cerrar sesión</a>
 
 </div>
 
@@ -89,6 +102,12 @@
 <!-- RESULTADO -->
 
 <div id="resultado" class="result"></div>
+
+<!-- GRÁFICA -->
+
+<div id="grafica-container" class="grafica-container">
+  <div id="grafica" class="grafica"></div>
+</div>
 
 <!-- PASOS -->
 
@@ -161,7 +180,109 @@ mostrarPasos(data.pasos);
 
 }
 
+// Graficar la función
+graficarFuncion(latex, a, b);
+
 MathJax.typeset();
+
+})
+
+}
+
+function graficarFuncion(latex, a, b){
+
+fetch("/graficar",{
+
+method:"POST",
+
+headers:{
+"Content-Type":"application/json"
+},
+
+body:JSON.stringify({
+integral:latex,
+a:a,
+b:b
+})
+
+})
+
+.then(res=>res.json())
+
+.then(data=>{
+
+if(data.error){
+
+console.error("Error en gráfica:", data.error);
+return;
+
+}
+
+// Crear la traza de la función
+let trace = {
+x: data.x,
+y: data.y,
+mode: 'lines',
+name: 'f(x)',
+line: {color: '#3b82f6', width: 3}
+};
+
+let traces = [trace];
+
+// Si hay límites definidos, agregar el relleno
+if(data.a !== null && data.b !== null){
+
+let a = data.a;
+let b = data.b;
+
+// Crear puntos para llenar el área
+let x_fill = data.x.filter(x => x >= a && x <= b);
+if(x_fill.length > 0){
+
+let y_fill = [];
+for(let i = 0; i < data.x.length; i++){
+
+if(data.x[i] >= a && data.x[i] <= b){
+
+y_fill.push(data.y[i]);
+
+}
+
+}
+
+let fillTrace = {
+x: x_fill,
+y: y_fill,
+fill: 'tozeroy',
+fillcolor: 'rgba(59, 130, 246, 0.2)',
+line: {color: 'rgba(59, 130, 246, 0)'},
+showlegend: true,
+name: 'Área integral'
+};
+
+traces.push(fillTrace);
+
+}
+
+}
+
+let layout = {
+title: {text: '📊 Gráfica de la función'},
+xaxis: {title: 'x'},
+yaxis: {title: 'f(x)'},
+plot_bgcolor: 'rgba(15, 23, 42, 0.5)',
+paper_bgcolor: 'rgba(30, 41, 59, 0.8)',
+font: {color: '#cbd5e1'},
+margin: {t: 40, l: 60, r: 40, b: 60}
+};
+
+Plotly.newPlot('grafica', traces, layout, {responsive: true});
+
+})
+
+.catch(err=>{
+
+console.error("Error al graficar:", err);
 
 })
 
@@ -171,33 +292,13 @@ function mostrarPasos(pasosHTML){
 
 let contenedor=document.getElementById("pasos");
 
-contenedor.innerHTML="";
+contenedor.innerHTML="<h2 style='color: #3b82f6; margin-bottom: 20px;'>📚 Pasos Detallados</h2>";
 
-let pasos=pasosHTML.split("<br>");
+// Mostrar los pasos como HTML completo
+contenedor.innerHTML += pasosHTML;
 
-let i=0;
-
-function mostrar(){
-
-if(i>=pasos.length) return;
-
-let div=document.createElement("div");
-
-div.className="paso";
-
-div.innerHTML=pasos[i];
-
-contenedor.appendChild(div);
-
+// Re-renderizar las ecuaciones
 MathJax.typeset();
-
-i++;
-
-setTimeout(mostrar,600);
-
-}
-
-mostrar();
 
 }
 
