@@ -1,7 +1,7 @@
 """
-MOTOR MATEMÁTICO PROFESIONAL DE INTEGRALES
-Similar a Mathway/Wolfram Alpha
-Creado para CarlosTech Math AI
+MOTOR MATEMÁTICO PROFESIONAL CON IA GRATUITA
+Resuelve integrales con pasos detallados usando SymPy + Google Gemini
+Similar a Mathway, Wolfram Alpha
 """
 
 from flask import Flask, request, jsonify, render_template, session, redirect, url_for
@@ -13,17 +13,35 @@ from sympy.parsing.sympy_parser import (
 from sympy.integrals import integrate as sympy_integrate
 from sympy.integrals.heurisch import heurisch
 import re
-from functools import wraps
-import numpy as np
-import traceback
 import os
 import time
+import traceback
+from functools import wraps
+import numpy as np
 from datetime import datetime
+
+# Importar Google Generative AI (Gemini) - GRATIS
+try:
+    import google.generativeai as genai
+    HAS_GEMINI = True
+except ImportError:
+    HAS_GEMINI = False
 
 app = Flask(__name__)
 
 # CONFIGURAR SESSION
 app.secret_key = os.environ.get('SECRET_KEY', 'carlostech_math_ai_secret_2025')
+
+# Configurar Gemini API (Gratis - tier sin pagar)
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
+if HAS_GEMINI and GEMINI_API_KEY:
+    try:
+        genai.configure(api_key=GEMINI_API_KEY)
+        GEMINI_AVAILABLE = True
+    except:
+        GEMINI_AVAILABLE = False
+else:
+    GEMINI_AVAILABLE = False
 
 # USUARIOS
 USERS = {
@@ -33,6 +51,123 @@ USERS = {
 }
 
 x = symbols('x')
+
+# ====================================
+# MÓDULO DE EXPLICACIONES CON IA
+# ====================================
+
+class IntegrationExplainer:
+    """Genera explicaciones paso a paso usando IA o reglas matemáticas"""
+    
+    def __init__(self, expr, result, method_detected, limits=None):
+        self.expr = expr
+        self.result = result
+        self.method_detected = method_detected
+        self.limits = limits
+        self.steps = []
+        
+    def generate_steps_with_ai(self):
+        """Genera pasos detallados usando Google Gemini (GRATIS)"""
+        if not GEMINI_AVAILABLE:
+            return self.generate_steps_with_rules()
+        
+        try:
+            model = genai.GenerativeModel('gemini-1.5-flash')  # Modelo gratuito
+            
+            prompt = f"""
+Eres un profesor de cálculo experto. Explica cómo resolver esta integral paso a paso.
+
+Expresión: {latex(self.expr)}
+Método: {self.method_detected}
+Resultado: {latex(self.result)}
+
+Proporciona:
+1. Identificación del tipo de integral
+2. Método a usar (reglas específicas)
+3. Pasos de resolución en orden
+4. Simplificación final
+
+Formato: Numerado (1. 2. 3. etc), claro y conciso.
+Máximo 6 pasos.
+"""
+            
+            response = model.generate_content(
+                prompt,
+                generation_config=genai.types.GenerationConfig(
+                    max_output_tokens=500,
+                    temperature=0.3,
+                )
+            )
+            
+            # Parsear respuesta
+            text = response.text
+            lines = text.split('\n')
+            steps = []
+            
+            for line in lines:
+                line = line.strip()
+                if line and (line[0].isdigit() or line.startswith('•')):
+                    steps.append(line)
+            
+            return steps[:6]  # Máximo 6 pasos
+            
+        except Exception as e:
+            # Fallback a reglas si IA falla
+            return self.generate_steps_with_rules()
+    
+    def generate_steps_with_rules(self):
+        """Genera pasos usando reglas matemáticas (SIEMPRE FUNCIONA)"""
+        steps = []
+        
+        try:
+            # Paso 1: Identificar tipo
+            steps.append(f"1. Identificamos que es una integral: {self.method_detected}")
+            
+            # Paso 2: Simplificar
+            simplified = simplify(self.expr)
+            steps.append(f"2. Expresión a integrar: ${latex(self.expr)}$")
+            
+            # Paso 3: Método específico
+            if "Polinómica" in self.method_detected:
+                steps.append("3. Aplicamos la regla de potencia: ∫xⁿ dx = xⁿ⁺¹/(n+1) + C")
+            elif "Trigonométrica" in self.method_detected:
+                if "Seno" in self.method_detected:
+                    steps.append("3. Usamos: ∫sin(u) du = -cos(u) + C")
+                elif "Coseno" in self.method_detected:
+                    steps.append("3. Usamos: ∫cos(u) du = sin(u) + C")
+                else:
+                    steps.append("3. Aplicamos identidades trigonométricas")
+            elif "Exponencial" in self.method_detected:
+                steps.append("3. Usamos: ∫eˣ dx = eˣ + C")
+            elif "Logarítmica" in self.method_detected:
+                steps.append("3. Aplicamos integración por partes")
+            elif "Raíces" in self.method_detected:
+                steps.append("3. Aplicamos sustitución trigonométrica")
+            else:
+                steps.append("3. Aplicamos método de integración simbólica")
+            
+            # Paso 4: Resolución
+            steps.append(f"4. Resolvemos la integral")
+            
+            # Paso 5: Simplificación
+            steps.append(f"5. Simplificamos el resultado")
+            
+            # Paso 6: Resultado final
+            if self.limits:
+                steps.append(f"6. Evaluamos en los límites: {latex(self.result)}")
+            else:
+                steps.append(f"6. Resultado final: ${latex(self.result)}$ + C")
+            
+        except Exception as e:
+            steps = [
+                "1. Se detectó una integral",
+                "2. Se aplicaron técnicas de integración simbólica",
+                "3. Se simplificó el resultado",
+                f"4. Resultado: ${latex(self.result)}$"
+            ]
+        
+        return steps
+
 
 # ====================================
 # MOTOR MATEMÁTICO AVANZADO
@@ -417,19 +552,37 @@ class IntegralSolver:
         }
     
     def get_response(self):
-        """Retorna respuesta en formato JSON profesional"""
+        """Retorna respuesta JSON profesional"""
         success = self.result is not None and len(self.errors) == 0
+        
+        # Generar pasos con IA o reglas
+        if success:
+            explainer = IntegrationExplainer(self.expr, self.result, self.method_detected, self.limits)
+            
+            if GEMINI_AVAILABLE:
+                steps_ia = explainer.generate_steps_with_ai()
+            else:
+                steps_ia = []
+            
+            # Combinar pasos inteligentes + pasos IA
+            final_steps = self.steps + steps_ia
+        else:
+            final_steps = self.steps
+        
+        gemini_used = success and GEMINI_AVAILABLE and len(final_steps) > len(self.steps)
         
         return {
             "input": latex(self.expr) if self.expr else self.expr_str,
             "simplified_expression": latex(self.simplified_expr) if self.simplified_expr else "",
             "method_detected": self.method_detected or "Desconocido",
-            "steps": self.steps,
+            "steps": final_steps,
             "result": latex(self.result) if self.result else "No se pudo resolver",
             "latex": self.get_latex(),
             "success": success,
             "errors": self.errors,
-            "computation_time": f"{(time.time() - self.start_time):.3f}s"
+            "computation_time": f"{(time.time() - self.start_time):.3f}s",
+            "gemini_available": GEMINI_AVAILABLE,
+            "gemini_used": gemini_used
         }
 
 
@@ -656,6 +809,41 @@ def derivada_legacy():
     return derivada()
 
 
+@app.route("/api/info", methods=["GET"])
+@login_required
+def info():
+    """Info sobre el motor profesional"""
+    return jsonify({
+        "nombre": "CarlosTech Math AI - Motor Profesional",
+        "version": "3.5 Pro con IA",
+        "motor": "SymPy + Google Gemini (IA Gratuita)",
+        "gemini_disponible": GEMINI_AVAILABLE,
+        "descripcion": "Motor avanzado similar a Mathway y Wolfram Alpha",
+        "capacidades": [
+            "✅ Polinómicas",
+            "✅ Trigonométricas",
+            "✅ Exponenciales",
+            "✅ Logarítmicas",
+            "✅ Radicales",
+            "✅ Racionales",
+            "✅ Integración por partes automática",
+            "✅ Sustitución trigonométrica",
+            "✅ Fracciones parciales",
+            "✅ Pasos detallados con IA",
+            "✅ Gráficos interactivos",
+            "✅ Derivadas"
+        ],
+        "metodos": [
+            "Integración directa de SymPy",
+            "Método heurístico",
+            "Integración por partes",
+            "Sustituciones trigonométricas",
+            "Descomposición en fracciones parciales",
+            "Análisis automático con IA Gemini"
+        ]
+    })
+
+
 # ====================================
 # MANEJO DE ERRORES
 # ====================================
@@ -676,4 +864,22 @@ def server_error(error):
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
+    
+    # Mensaje de startup profesional
+    print("\n" + "="*80)
+    print("   🚀 CarlosTech Math AI - Motor de Integrales v3.5 Pro")
+    print("="*80)
+    print(f"   📊 Motor: SymPy + Google Gemini")
+    print(f"   🤖 IA Gemini: {'✅ HABILITADA' if GEMINI_AVAILABLE else '⚠️  NO DISPONIBLE (función offline)'}")
+    print(f"   📝 Autenticación: Activada")
+    print(f"   🔗 URL: http://localhost:{port}")
+    print("="*80)
+    print("   Características:")
+    print("   ✨ Integrales (indefinidas y definidas)")
+    print("   ✨ Múltiples métodos automáticos")
+    print("   ✨ Pasos detallados con IA")
+    print("   ✨ Gráficos interactivos")
+    print("   ✨ API REST profesional")
+    print("="*80 + "\n")
+    
     app.run(host="0.0.0.0", port=port, debug=False)
