@@ -124,6 +124,10 @@
                     <i class="fas fa-infinity"></i>
                     ODE
                 </a>
+                <a href="#" class="nav-link" onclick="switchTool('simplificador',this)">
+                    <i class="fas fa-wand-magic-sparkles"></i>
+                    Simplificar
+                </a>
             </div>
 
             <!-- RIGHT: badge + user -->
@@ -484,6 +488,44 @@
                 </div>
             </section>
 
+            <!-- ═══ SIMPLIFICADOR ═══ -->
+            <section class="input-section tool-section hidden" id="tool-simplificador">
+                <div class="section-header">
+                    <h2><i class="fas fa-wand-magic-sparkles"></i> Simplificador</h2>
+                    <p>Simplifica, expande o factoriza cualquier expresión algebraica</p>
+                </div>
+                <div class="editor-wrapper">
+                    <label class="editor-label">Expresi&oacute;n</label>
+                    <div id="math-input-simp" class="mathbox"></div>
+                </div>
+                <div class="limits-wrapper">
+                    <div class="limit-group">
+                        <label class="limit-label"><i class="fas fa-sliders"></i> Operaci&oacute;n</label>
+                        <select id="simpOp" class="limit-input">
+                            <option value="simplify">Simplificar</option>
+                            <option value="expand">Expandir</option>
+                            <option value="factor">Factorizar</option>
+                            <option value="cancel">Cancelar fracciones</option>
+                            <option value="apart">Fracciones parciales</option>
+                            <option value="trigsimp">Simplif. trigonométrica</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-primary" onclick="calcSimplificador()"><i class="fas fa-play"></i><span>Aplicar</span></button>
+                    <button class="btn btn-secondary" onclick="limpiarTool('simp')"><i class="fas fa-trash"></i><span>Limpiar</span></button>
+                </div>
+                <div class="examples-wrapper">
+                    <div class="examples-header"><i class="fas fa-book"></i> Ejemplos</div>
+                    <div class="examples-grid">
+                        <button class="example-btn" onclick="setExampleTool('simp','(x**2-1)/(x-1)')">x²-1/x-1</button>
+                        <button class="example-btn" onclick="setExampleTool('simp','(x+1)**3')">( x+1)³</button>
+                        <button class="example-btn" onclick="setExampleTool('simp','x**2-4')">x²-4</button>
+                        <button class="example-btn" onclick="setExampleTool('simp','sin(x)**2+cos(x)**2')">sin²+cos²</button>
+                    </div>
+                </div>
+            </section>
+
             <!-- ═══ ODE ═══ -->
             <section class="input-section tool-section hidden" id="tool-ode">
                 <div class="section-header">
@@ -816,6 +858,7 @@
         var mathFieldLimite = MQ.MathField(document.getElementById('math-input-limite'));
         var mathFieldTaylor = MQ.MathField(document.getElementById('math-input-taylor'));
         var mathFieldODE    = MQ.MathField(document.getElementById('math-input-ode'));
+        var mathFieldSimp   = MQ.MathField(document.getElementById('math-input-simp'));
 
         // ═══════════════════════════════════════════
         // SWITCH TOOL
@@ -830,12 +873,12 @@
         }
 
         function setExampleTool(tool, expr) {
-            const fields = { deriv: mathFieldDeriv, limite: mathFieldLimite, taylor: mathFieldTaylor, ode: mathFieldODE };
+            const fields = { deriv: mathFieldDeriv, limite: mathFieldLimite, taylor: mathFieldTaylor, ode: mathFieldODE, simp: mathFieldSimp };
             if (fields[tool]) { fields[tool].latex(expr); fields[tool].focus(); }
         }
 
         function limpiarTool(tool) {
-            const fields = { deriv: mathFieldDeriv, limite: mathFieldLimite, taylor: mathFieldTaylor, ode: mathFieldODE };
+            const fields = { deriv: mathFieldDeriv, limite: mathFieldLimite, taylor: mathFieldTaylor, ode: mathFieldODE, simp: mathFieldSimp };
             if (fields[tool]) fields[tool].latex('');
             document.getElementById('resultado-card').classList.add('hidden');
             document.getElementById('grafica-card').classList.add('hidden');
@@ -908,6 +951,30 @@
                 if (!data.success) { mostrarError(data.error); return; }
                 mostrarResultadoGenerico(data.serie, `Serie de Taylor orden ${orden}`, '');
                 if (data.steps) mostrarPasos(data.steps, 'Serie de Taylor', data.input, data.result);
+                MathJax.typeset();
+            })
+            .catch(() => mostrarError('Error en la solicitud'));
+        }
+
+        // ═══════════════════════════════════════════
+        // SIMPLIFICADOR
+        // ═══════════════════════════════════════════
+        function calcSimplificador() {
+            const expr = mathFieldSimp.latex();
+            const op   = document.getElementById('simpOp').value;
+            if (!expr.trim()) { alert('Ingresa una expresión'); return; }
+            mostrarLoading();
+            fetch('/api/simplificar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ expresion: expr, operacion: op })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (!data.success) { mostrarError(data.error); return; }
+                const opNames = { simplify:'Simplificado', expand:'Expandido', factor:'Factorizado', cancel:'Cancelado', apart:'Fracciones parciales', trigsimp:'Simplif. trig.' };
+                mostrarResultadoGenerico(data.result, opNames[op] || op, '');
+                if (data.steps) mostrarPasos(data.steps, opNames[op] || op, data.input, data.result);
                 MathJax.typeset();
             })
             .catch(() => mostrarError('Error en la solicitud'));
@@ -1093,6 +1160,16 @@
             document.getElementById(id).classList.remove('active');
             document.body.style.overflow = '';
         }
+
+        // Ctrl+Enter para resolver
+        document.addEventListener('keydown', e => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                e.preventDefault();
+                const tool = window._activeTool || 'integrales';
+                const actions = { integrales: resolver, derivadas: calcDerivada, limites: calcLimite, taylor: calcTaylor, ode: calcODE, simplificador: calcSimplificador };
+                if (actions[tool]) actions[tool]();
+            }
+        });
 
         // Cerrar con Escape o click en backdrop
         document.addEventListener('keydown', e => { if (e.key === 'Escape') document.querySelectorAll('.modal-backdrop.active').forEach(m => { m.classList.remove('active'); document.body.style.overflow = ''; }); });

@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora de Integrales Online Gratis | CarlosTech Math AI</title>
+    <meta name="description" content="Resuelve integrales, derivadas, límites, series de Taylor y ecuaciones diferenciales paso a paso. Gratis, sin registro, con gráficas interactivas.">
+    <meta name="keywords" content="calculadora de integrales, resolver integrales online, integral paso a paso, calculadora de derivadas, límites matemáticos, series de Taylor, ecuaciones diferenciales, wolfram alpha alternativa, mathway alternativa">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://carlostech-math-ai.onrender.com">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Calculadora de Integrales Online Gratis | CarlosTech Math AI">
+    <meta property="og:description" content="Resuelve integrales paso a paso con detección automática de método. Gratis y sin registro.">
+    <meta property="og:url" content="https://carlostech-math-ai.onrender.com">
+    <script type="application/ld+json">
+    {"@context":"https://schema.org","@type":"WebApplication","name":"CarlosTech Math AI","url":"https://carlostech-math-ai.onrender.com","description":"Calculadora de integrales, derivadas, límites, series de Taylor y ecuaciones diferenciales online gratis.","applicationCategory":"EducationalApplication","operatingSystem":"Web","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"inLanguage":"es"}
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box;}
+        :root{--blue:#3b82f6;--purple:#8b5cf6;--bg:#0f172a;--bg2:#1e293b;--text:#f1f5f9;--muted:#94a3b8;}
+        body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+        /* NAV */
+        nav{position:sticky;top:0;z-index:100;height:64px;display:flex;align-items:center;padding:0 1.5rem;background:rgba(8,13,26,0.85);backdrop-filter:blur(20px);border-bottom:1px solid rgba(255,255,255,0.06);}
+        .nav-inner{width:100%;max-width:1200px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;}
+        .logo{display:flex;align-items:center;gap:.625rem;text-decoration:none;}
+        .logo-icon{width:34px;height:34px;border-radius:.5rem;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:900;color:#fff;}
+        .logo-text{font-size:.95rem;font-weight:800;background:linear-gradient(135deg,#e0e7ff,#a5b4fc);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+        .nav-cta{display:flex;align-items:center;gap:.75rem;}
+        .btn-login{padding:.5rem 1.25rem;border:1px solid rgba(255,255,255,0.12);border-radius:.625rem;color:var(--muted);font-size:.85rem;font-weight:600;text-decoration:none;transition:all .2s;}
+        .btn-login:hover{color:var(--text);border-color:rgba(99,102,241,.4);}
+        .btn-start{padding:.5rem 1.25rem;background:linear-gradient(135deg,#3b82f6,#6366f1);border-radius:.625rem;color:#fff;font-size:.85rem;font-weight:700;text-decoration:none;transition:all .2s;}
+        .btn-start:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(99,102,241,.4);}
+
+        /* HERO */
+        .hero{padding:6rem 1.5rem 5rem;text-align:center;background:radial-gradient(ellipse 80% 60% at 20% 0%,rgba(99,102,241,.18) 0%,transparent 60%),radial-gradient(ellipse 60% 50% at 80% 100%,rgba(59,130,246,.14) 0%,transparent 55%),var(--bg);}
+        .hero-badge{display:inline-flex;align-items:center;gap:.5rem;background:rgba(99,102,241,.12);border:1px solid rgba(99,102,241,.35);color:#a5b4fc;font-size:.78rem;font-weight:600;padding:.4rem 1rem;border-radius:2rem;margin-bottom:1.5rem;}
+        .badge-dot{width:7px;height:7px;border-radius:50%;background:#4ade80;box-shadow:0 0 0 3px rgba(74,222,128,.25);animation:pulse 2s ease-in-out infinite;}
+        @keyframes pulse{0%,100%{box-shadow:0 0 0 3px rgba(74,222,128,.25);}50%{box-shadow:0 0 0 6px rgba(74,222,128,.08);}}
+        h1{font-size:clamp(2.4rem,5.5vw,4rem);font-weight:900;line-height:1.08;letter-spacing:-.04em;margin-bottom:1.25rem;}
+        .gradient{background:linear-gradient(135deg,#60a5fa 0%,#a78bfa 50%,#f472b6 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+        .hero p{font-size:clamp(.95rem,2vw,1.15rem);color:var(--muted);max-width:560px;margin:0 auto 2rem;line-height:1.7;}
+        .hero-btns{display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;margin-bottom:3rem;}
+        .cta-primary{display:inline-flex;align-items:center;gap:.6rem;padding:.875rem 2rem;background:linear-gradient(135deg,#3b82f6,#6366f1);color:#fff;border-radius:.875rem;font-size:1rem;font-weight:700;text-decoration:none;box-shadow:0 4px 24px rgba(99,102,241,.45);transition:all .25s;}
+        .cta-primary:hover{transform:translateY(-3px);box-shadow:0 8px 32px rgba(99,102,241,.6);}
+        .cta-secondary{display:inline-flex;align-items:center;gap:.6rem;padding:.875rem 2rem;border:1px solid rgba(255,255,255,.12);color:var(--muted);border-radius:.875rem;font-size:1rem;font-weight:600;text-decoration:none;transition:all .2s;}
+        .cta-secondary:hover{color:var(--text);border-color:rgba(99,102,241,.4);}
+
+        /* STATS */
+        .stats{display:flex;align-items:center;justify-content:center;gap:0;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:1.25rem;padding:1.25rem 2rem;max-width:600px;margin:0 auto;flex-wrap:wrap;}
+        .stat{display:flex;flex-direction:column;align-items:center;gap:.2rem;padding:0 1.75rem;}
+        .stat-n{font-size:1.6rem;font-weight:800;background:linear-gradient(135deg,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+        .stat-l{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;font-weight:600;}
+        .stat-div{width:1px;height:36px;background:rgba(255,255,255,.08);}
+
+        /* FEATURES */
+        .features{max-width:1200px;margin:5rem auto;padding:0 1.5rem;}
+        .features h2{text-align:center;font-size:clamp(1.6rem,3vw,2.2rem);font-weight:800;margin-bottom:.75rem;}
+        .features-sub{text-align:center;color:var(--muted);margin-bottom:3rem;font-size:.95rem;}
+        .features-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1.5rem;}
+        .feature-card{background:var(--bg2);border:1px solid rgba(255,255,255,.07);border-radius:1rem;padding:1.75rem;transition:all .2s;}
+        .feature-card:hover{border-color:rgba(99,102,241,.3);transform:translateY(-4px);box-shadow:0 12px 40px rgba(0,0,0,.3);}
+        .feature-icon{width:48px;height:48px;border-radius:.75rem;display:flex;align-items:center;justify-content:center;font-size:1.25rem;margin-bottom:1rem;}
+        .fi-blue{background:rgba(59,130,246,.12);color:#60a5fa;}
+        .fi-purple{background:rgba(139,92,246,.12);color:#a78bfa;}
+        .fi-green{background:rgba(34,197,94,.12);color:#4ade80;}
+        .fi-yellow{background:rgba(251,191,36,.12);color:#fbbf24;}
+        .fi-pink{background:rgba(236,72,153,.12);color:#f472b6;}
+        .fi-teal{background:rgba(20,184,166,.12);color:#2dd4bf;}
+        .feature-card h3{font-size:1rem;font-weight:700;margin-bottom:.5rem;}
+        .feature-card p{font-size:.85rem;color:var(--muted);line-height:1.6;}
+
+        /* TOOLS PREVIEW */
+        .tools{max-width:1200px;margin:0 auto 5rem;padding:0 1.5rem;}
+        .tools h2{text-align:center;font-size:clamp(1.6rem,3vw,2.2rem);font-weight:800;margin-bottom:.75rem;}
+        .tools-sub{text-align:center;color:var(--muted);margin-bottom:3rem;font-size:.95rem;}
+        .tools-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;}
+        .tool-pill{display:flex;align-items:center;gap:.875rem;padding:1rem 1.25rem;background:var(--bg2);border:1px solid rgba(255,255,255,.07);border-radius:.875rem;text-decoration:none;color:var(--text);transition:all .2s;}
+        .tool-pill:hover{border-color:rgba(99,102,241,.35);background:rgba(99,102,241,.08);}
+        .tool-pill-icon{width:36px;height:36px;border-radius:.5rem;display:flex;align-items:center;justify-content:center;font-size:.9rem;flex-shrink:0;}
+        .tool-pill h4{font-size:.875rem;font-weight:700;margin-bottom:.15rem;}
+        .tool-pill p{font-size:.72rem;color:var(--muted);}
+
+        /* FAQ */
+        .faq{max-width:800px;margin:0 auto 5rem;padding:0 1.5rem;}
+        .faq h2{text-align:center;font-size:clamp(1.6rem,3vw,2.2rem);font-weight:800;margin-bottom:2rem;}
+        .faq-item{border:1px solid rgba(255,255,255,.07);border-radius:.875rem;margin-bottom:.75rem;overflow:hidden;}
+        .faq-q{display:flex;align-items:center;justify-content:space-between;padding:1.125rem 1.25rem;cursor:pointer;font-weight:600;font-size:.9rem;user-select:none;}
+        .faq-q:hover{background:rgba(255,255,255,.03);}
+        .faq-a{padding:0 1.25rem 1.125rem;font-size:.85rem;color:var(--muted);line-height:1.7;display:none;}
+        .faq-item.open .faq-a{display:block;}
+        .faq-item.open .faq-chevron{transform:rotate(180deg);}
+        .faq-chevron{transition:transform .2s;color:var(--muted);font-size:.75rem;}
+
+        /* CTA FINAL */
+        .cta-section{text-align:center;padding:5rem 1.5rem;background:radial-gradient(ellipse 60% 50% at 50% 50%,rgba(99,102,241,.12) 0%,transparent 70%);}
+        .cta-section h2{font-size:clamp(1.8rem,4vw,2.8rem);font-weight:900;margin-bottom:1rem;}
+        .cta-section p{color:var(--muted);margin-bottom:2rem;font-size:.95rem;}
+
+        /* FOOTER */
+        footer{background:rgba(15,23,42,.8);border-top:1px solid rgba(255,255,255,.06);padding:2rem 1.5rem;}
+        .footer-inner{max-width:1200px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;font-size:.8rem;color:var(--muted);}
+        .footer-links{display:flex;gap:1.5rem;}
+        .footer-links a{color:var(--muted);text-decoration:none;transition:color .2s;}
+        .footer-links a:hover{color:var(--blue);}
+
+        /* SEO TEXT */
+        .seo-text{max-width:1200px;margin:0 auto;padding:2rem 1.5rem 3rem;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:2rem;}
+        .seo-text h2{font-size:1rem;font-weight:700;color:#a5b4fc;margin-bottom:.625rem;}
+        .seo-text p{font-size:.82rem;color:#64748b;line-height:1.7;}
+
+        @media(max-width:768px){
+            .stats{padding:1rem;}.stat{padding:0 1rem;}
+            .hero{padding:4rem 1rem 4rem;}
+            h1{font-size:2rem;}
+        }
+    </style>
+</head>
+<body>
+
+<nav>
+    <div class="nav-inner">
+        <a href="/" class="logo">
+            <div class="logo-icon">∫</div>
+            <span class="logo-text">CarlosTech Math AI</span>
+        </a>
+        <div class="nav-cta">
+            <a href="/login" class="btn-login">Iniciar sesión</a>
+            <a href="/register" class="btn-start"><i class="fas fa-rocket"></i> Empezar gratis</a>
+        </div>
+    </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+    <div class="hero-badge"><span class="badge-dot"></span> Motor IA · SymPy 1.13 · 6 herramientas</div>
+    <h1>Resuelve integrales<br><span class="gradient">como un experto</span></h1>
+    <p>Soluciones paso a paso con detección automática de método — polinómicas, trigonométricas, por partes, fracciones parciales y más.</p>
+    <div class="hero-btns">
+        <a href="/register" class="cta-primary"><i class="fas fa-play"></i> Empezar gratis</a>
+        <a href="/login" class="cta-secondary"><i class="fas fa-sign-in-alt"></i> Ya tengo cuenta</a>
+    </div>
+    <div class="stats">
+        <div class="stat"><span class="stat-n">1000+</span><span class="stat-l">Expresiones</span></div>
+        <div class="stat-div"></div>
+        <div class="stat"><span class="stat-n">6</span><span class="stat-l">Herramientas</span></div>
+        <div class="stat-div"></div>
+        <div class="stat"><span class="stat-n">~95%</span><span class="stat-l">Precisión</span></div>
+        <div class="stat-div"></div>
+        <div class="stat"><span class="stat-n">∞</span><span class="stat-l">Gratis</span></div>
+    </div>
+</section>
+
+<!-- FEATURES -->
+<section class="features">
+    <h2>Todo lo que necesitas para <span class="gradient">dominar el cálculo</span></h2>
+    <p class="features-sub">Desde integrales básicas hasta ecuaciones diferenciales — con pasos detallados y gráficas interactivas.</p>
+    <div class="features-grid">
+        <div class="feature-card">
+            <div class="feature-icon fi-blue"><i class="fas fa-list-ol"></i></div>
+            <h3>Pasos detallados</h3>
+            <p>Cada solución incluye todos los pasos con explicación del método aplicado — ideal para aprender y verificar.</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon fi-purple"><i class="fas fa-wand-magic-sparkles"></i></div>
+            <h3>Detección automática</h3>
+            <p>El motor detecta automáticamente el mejor método: regla de potencia, integración por partes, fracciones parciales, sustitución trigonométrica.</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon fi-green"><i class="fas fa-chart-line"></i></div>
+            <h3>Gráficas interactivas</h3>
+            <p>Visualiza la función y el área bajo la curva con gráficas Plotly en tiempo real. Zoom, hover y exportación incluidos.</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon fi-yellow"><i class="fas fa-bolt"></i></div>
+            <h3>Resultados en &lt;0.1s</h3>
+            <p>Caché inteligente para expresiones frecuentes. Las integrales más comunes se resuelven instantáneamente.</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon fi-pink"><i class="fas fa-share-nodes"></i></div>
+            <h3>Compartir soluciones</h3>
+            <p>Genera un link único para compartir cualquier solución con compañeros o profesores. Con contador de vistas.</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon fi-teal"><i class="fas fa-file-pdf"></i></div>
+            <h3>Exportar a PDF</h3>
+            <p>Descarga la solución completa con fórmulas renderizadas en LaTeX, lista para entregar o estudiar offline.</p>
+        </div>
+    </div>
+</section>
+
+<!-- TOOLS -->
+<section class="tools">
+    <h2>6 herramientas matemáticas</h2>
+    <p class="tools-sub">Una plataforma completa para todo el cálculo universitario.</p>
+    <div class="tools-grid">
+        <a href="/register" class="tool-pill">
+            <div class="tool-pill-icon fi-blue"><i class="fas fa-square-root-variable"></i></div>
+            <div><h4>Integrales</h4><p>Definidas e indefinidas</p></div>
+        </a>
+        <a href="/register" class="tool-pill">
+            <div class="tool-pill-icon fi-purple"><i class="fas fa-prime"></i></div>
+            <div><h4>Derivadas</h4><p>Cualquier orden</p></div>
+        </a>
+        <a href="/register" class="tool-pill">
+            <div class="tool-pill-icon fi-green"><i class="fas fa-arrow-right-to-bracket"></i></div>
+            <div><h4>Límites</h4><p>Con L'Hôpital automático</p></div>
+        </a>
+        <a href="/register" class="tool-pill">
+            <div class="tool-pill-icon fi-yellow"><i class="fas fa-wave-square"></i></div>
+            <div><h4>Series de Taylor</h4><p>Cualquier punto y orden</p></div>
+        </a>
+        <a href="/register" class="tool-pill">
+            <div class="tool-pill-icon fi-pink"><i class="fas fa-infinity"></i></div>
+            <div><h4>Ecuaciones Diferenciales</h4><p>ODEs 1er y 2do orden</p></div>
+        </a>
+        <a href="/register" class="tool-pill">
+            <div class="tool-pill-icon fi-teal"><i class="fas fa-wand-magic-sparkles"></i></div>
+            <div><h4>Simplificador</h4><p>Simplifica, expande, factoriza</p></div>
+        </a>
+    </div>
+</section>
+
+<!-- FAQ -->
+<section class="faq">
+    <h2>Preguntas frecuentes</h2>
+    <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">¿Cómo resolver una integral paso a paso? <i class="fas fa-chevron-down faq-chevron"></i></div>
+        <div class="faq-a">Ingresa la expresión en el editor, selecciona los límites si es definida y haz clic en Resolver (o Ctrl+Enter). CarlosTech detecta automáticamente el método y muestra cada paso con explicación.</div>
+    </div>
+    <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">¿Es completamente gratis? <i class="fas fa-chevron-down faq-chevron"></i></div>
+        <div class="faq-a">Sí, CarlosTech Math AI es completamente gratis. Solo necesitas crear una cuenta para acceder a todas las funciones, incluyendo historial, compartir soluciones y exportar PDF.</div>
+    </div>
+    <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">¿Qué tipos de integrales puede resolver? <i class="fas fa-chevron-down faq-chevron"></i></div>
+        <div class="faq-a">Resuelve integrales polinómicas, trigonométricas (sin, cos, tan, sec, csc, cot), exponenciales, logarítmicas, racionales, radicales, integrales definidas e indefinidas, e integrales impropias.</div>
+    </div>
+    <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">¿Qué diferencia hay con Wolfram Alpha o Mathway? <i class="fas fa-chevron-down faq-chevron"></i></div>
+        <div class="faq-a">CarlosTech es completamente gratis, en español, con pasos detallados en todos los cálculos, gráficas interactivas y la posibilidad de compartir soluciones. No tiene límite de consultas diarias.</div>
+    </div>
+    <div class="faq-item">
+        <div class="faq-q" onclick="toggleFaq(this)">¿Puedo usar LaTeX para ingresar expresiones? <i class="fas fa-chevron-down faq-chevron"></i></div>
+        <div class="faq-a">Sí. El editor acepta LaTeX (como \sin, \frac{}{}, \sqrt{}), notación estándar (sin(x), x**2) y el teclado matemático visual incluido en la interfaz.</div>
+    </div>
+</section>
+
+<!-- CTA FINAL -->
+<section class="cta-section">
+    <h2>Empieza a resolver ahora</h2>
+    <p>Gratis, sin tarjeta de crédito, sin límites.</p>
+    <a href="/register" class="cta-primary" style="display:inline-flex;"><i class="fas fa-rocket"></i> Crear cuenta gratis</a>
+</section>
+
+<!-- SEO TEXT -->
+<div class="seo-text">
+    <div>
+        <h2>Calculadora de Integrales Online</h2>
+        <p>Resuelve integrales indefinidas y definidas al instante. Soporta integrales polinómicas, trigonométricas, exponenciales, logarítmicas, racionales y radicales. Detecta automáticamente el método: regla de potencia, integración por partes, fracciones parciales y sustitución trigonométrica.</p>
+    </div>
+    <div>
+        <h2>Derivadas y Límites Paso a Paso</h2>
+        <p>Calcula derivadas de cualquier orden con explicación de cada regla (potencia, cadena, producto, cociente). Calcula límites laterales y bilaterales con detección automática de formas indeterminadas y aplicación de la Regla de L'Hôpital.</p>
+    </div>
+    <div>
+        <h2>Series de Taylor y Ecuaciones Diferenciales</h2>
+        <p>Expande cualquier función en serie de Taylor o Maclaurin. Resuelve ecuaciones diferenciales ordinarias (ODE) de primer y segundo orden: separables, lineales, Bernoulli y con coeficientes constantes.</p>
+    </div>
+</div>
+
+<footer>
+    <div class="footer-inner">
+        <p>© 2025 CarlosTech Math AI. Todos los derechos reservados.</p>
+        <div class="footer-links">
+            <a href="/login">Iniciar sesión</a>
+            <a href="/register">Registro</a>
+        </div>
+    </div>
+</footer>
+
+<script>
+function toggleFaq(el) {
+    el.parentElement.classList.toggle('open');
+}
+</script>
+</body>
+</html>

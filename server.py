@@ -809,20 +809,25 @@ def login_required(f):
     return decorated
 
 
-@app.route("/", methods=["GET", "POST"])
+@app.route("/")
+def landing():
+    if 'user' in session:
+        return redirect(url_for('dashboard'))
+    return render_template("landing.html")
+
+
+@app.route("/login", methods=["GET", "POST"])
 def login():
     if 'user' in session:
         return redirect(url_for('dashboard'))
     if request.method == "POST":
         username = request.form.get("username", "").strip()
         password = request.form.get("password", "").strip()
-        # Admin hardcodeado
         if username == ADMIN_USER and check_password_hash(ADMIN_HASH, password):
             session['user']  = ADMIN_USER
             session['email'] = 'admin@carlostech.ai'
             session['role']  = 'admin'
             return redirect(url_for('dashboard'))
-        # Usuarios de la base de datos
         with get_db() as conn:
             row = conn.execute("SELECT * FROM users WHERE username=?", (username,)).fetchone()
         if row and check_password_hash(row['password'], password):
@@ -1103,6 +1108,38 @@ def solve_with_timeout(expr_text, limits, timeout=SOLVER_TIMEOUT):
             "computation_time": f"{timeout}s"
         }
     return result_container.get('resp', {"success": False, "error": "Error desconocido", "steps": []})
+
+
+@app.route("/api/simplificar", methods=["POST"])
+@login_required
+@limiter.limit("30 per minute; 5 per second")
+def api_simplificar():
+    try:
+        data = request.json or {}
+        expr_text = data.get("expresion", "").strip()
+        op        = data.get("operacion", "simplify")
+        if not expr_text:
+            return jsonify({"error": "Expresion vacia"}), 400
+        expr = parse_expression(expr_text)
+        ops  = {
+            "simplify":  lambda e: simplify(e),
+            "expand":    lambda e: expand(e),
+            "factor":    lambda e: factor(e),
+            "cancel":    lambda e: cancel(e),
+            "apart":     lambda e: apart(e, x),
+            "trigsimp":  lambda e: trigsimp(e),
+        }
+        fn = ops.get(op, ops["simplify"])
+        result = fn(expr)
+        el, rl = latex(expr), latex(result)
+        steps = [
+            {"title": "Expresión original", "type": "identify", "text": "Expresión a procesar:", "math": el},
+            {"title": f"Aplicar {op}",       "type": "calc",     "text": f"Aplicamos la operación '{op}' sobre la expresión:", "math": rf"{el} \\longrightarrow {rl}"},
+            {"title": "Resultado",           "type": "result",   "text": "Resultado final:", "math": rf"\\boxed{{{rl}}}"},
+        ]
+        return jsonify({"success": True, "input": el, "result": rl, "steps": steps})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e), "steps": []}), 400
 
 
 @app.route("/api/resolver", methods=["POST"])
