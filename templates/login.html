@@ -3,7 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CarlosTech Math AI — Acceder</title>
+    <title>Iniciar Sesión | CarlosTech Math AI — Calculadora de Integrales</title>
+    <meta name="description" content="Accede a CarlosTech Math AI, la calculadora de integrales, derivadas y límites más completa en español. Gratis y con pasos detallados.">
+    <meta name="robots" content="noindex, follow">
+    <link rel="canonical" href="https://carlostech-math-ai.onrender.com/">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
@@ -625,10 +628,17 @@
             </div>
             {% endif %}
 
-            {% if success %}
+            {% if request.args.get('reset') %}
             <div class="alert alert-success">
                 <i class="fas fa-circle-check"></i>
-                <span>{{ success }}</span>
+                <span>Contraseña actualizada. Ya puedes ingresar.</span>
+            </div>
+            {% endif %}
+
+            {% if request.args.get('registered') %}
+            <div class="alert alert-success">
+                <i class="fas fa-circle-check"></i>
+                <span>Cuenta creada exitosamente. Ya puedes ingresar.</span>
             </div>
             {% endif %}
 
@@ -674,7 +684,7 @@
                         <input type="checkbox" name="remember">
                         Recuérdame
                     </label>
-                    <a href="#" class="forgot-link">¿Olvidaste tu contraseña?</a>
+                    <a href="/forgot" class="forgot-link">¿Olvidaste tu contraseña?</a>
                 </div>
 
                 <button type="submit" class="submit-btn" id="submitBtn">
@@ -686,14 +696,10 @@
 
             </form>
 
-            <div class="divider">credenciales de demo</div>
 
-            <div class="demo-box">
-                Usuario: <strong>carlos</strong> &nbsp;·&nbsp; Contraseña: <strong>carlos123</strong>
-            </div>
 
             <div class="card-footer">
-                ¿Problemas para acceder? <a href="#">Contactar soporte</a>
+                ¿No tienes cuenta? <a href="/register">Crear cuenta gratis</a>
             </div>
 
         </div>
