@@ -1,885 +1,829 @@
 """
-MOTOR MATEMÁTICO PROFESIONAL CON IA GRATUITA
-Resuelve integrales con pasos detallados usando SymPy + Google Gemini
-Similar a Mathway, Wolfram Alpha
+CarlosTech Math AI - Motor de Integrales v5.0
+Parser ultra robusto + SymPy para resolver cualquier integral
 """
 
 from flask import Flask, request, jsonify, render_template, session, redirect, url_for
 from sympy import *
 from sympy.parsing.sympy_parser import (
-    parse_expr, standard_transformations, 
+    parse_expr, standard_transformations,
     implicit_multiplication_application, convert_xor
 )
-from sympy.integrals import integrate as sympy_integrate
-from sympy.integrals.heurisch import heurisch
-import re
-import os
-import time
-import traceback
+import re, os, time, traceback
 from functools import wraps
 import numpy as np
-from datetime import datetime
-
-# Importar Google Generative AI (Gemini) - GRATIS
-try:
-    import google.generativeai as genai
-    HAS_GEMINI = True
-except ImportError:
-    HAS_GEMINI = False
 
 app = Flask(__name__)
+app.secret_key = os.environ.get('SECRET_KEY', 'carlostech-secret-2025')
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE='Lax',
+    SESSION_COOKIE_SECURE=False,
+    PERMANENT_SESSION_LIFETIME=3600
+)
 
-# CONFIGURAR SESSION
-app.secret_key = os.environ.get('SECRET_KEY', 'carlostech_math_ai_secret_2025')
+USERS = {'carlos': 'carlos123', 'admin': 'admin123', 'demo': 'demo123'}
 
-# Configurar Gemini API (Gratis - tier sin pagar)
-GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
-if HAS_GEMINI and GEMINI_API_KEY:
-    try:
-        genai.configure(api_key=GEMINI_API_KEY)
-        GEMINI_AVAILABLE = True
-    except:
-        GEMINI_AVAILABLE = False
-else:
-    GEMINI_AVAILABLE = False
+x, t, u, n = symbols('x t u n')
 
-# USUARIOS
-USERS = {
-    'carlos': 'carlos123',
-    'admin': 'admin123',
-    'demo': 'demo123'
+TRANSFORMATIONS = standard_transformations + (implicit_multiplication_application, convert_xor)
+
+LOCAL_DICT = {
+    'x': x, 'e': E, 'E': E, 'pi': pi, 'oo': oo, 'inf': oo,
+    'sin': sin, 'cos': cos, 'tan': tan, 'cot': cot, 'sec': sec, 'csc': csc,
+    'asin': asin, 'acos': acos, 'atan': atan, 'arcsin': asin, 'arccos': acos, 'arctan': atan,
+    'sinh': sinh, 'cosh': cosh, 'tanh': tanh, 'coth': coth,
+    'asinh': asinh, 'acosh': acosh, 'atanh': atanh,
+    'exp': exp, 'log': log, 'ln': log, 'sqrt': sqrt, 'Abs': Abs, 'abs': Abs,
+    'sign': sign, 'floor': floor, 'ceiling': ceiling,
+    'factorial': factorial, 'gamma': gamma,
 }
 
-x = symbols('x')
 
-# ====================================
-# MÓDULO DE EXPLICACIONES CON IA
-# ====================================
+def clean_latex(expr_str):
+    """
+    Convierte CUALQUIER formato de entrada a expresión SymPy válida.
+    Maneja: LaTeX de MathQuill, texto plano, notación matemática estándar.
+    """
+    s = expr_str.strip()
 
-class IntegrationExplainer:
-    """Genera explicaciones paso a paso usando IA o reglas matemáticas"""
-    
-    def __init__(self, expr, result, method_detected, limits=None):
-        self.expr = expr
-        self.result = result
-        self.method_detected = method_detected
-        self.limits = limits
-        self.steps = []
-        
-    def generate_steps_with_ai(self):
-        """Genera pasos detallados usando Google Gemini (GRATIS)"""
-        if not GEMINI_AVAILABLE:
-            return self.generate_steps_with_rules()
-        
-        try:
-            model = genai.GenerativeModel('gemini-1.5-flash')  # Modelo gratuito
-            
-            prompt = f"""
-Eres un profesor de cálculo experto. Explica cómo resolver esta integral paso a paso.
+    # --- 1. Eliminar prefijos de integral ---
+    s = re.sub(r'\\int\s*', '', s)
+    s = re.sub(r'∫\s*', '', s)
+    s = re.sub(r'integral\s+(of\s+)?', '', s, flags=re.IGNORECASE)
 
-Expresión: {latex(self.expr)}
-Método: {self.method_detected}
-Resultado: {latex(self.result)}
+    # --- 2. Eliminar dx, dt, du al final ---
+    s = re.sub(r'\s*d[a-zA-Z]\s*$', '', s)
 
-Proporciona:
-1. Identificación del tipo de integral
-2. Método a usar (reglas específicas)
-3. Pasos de resolución en orden
-4. Simplificación final
+    # --- 3. Limpiar espacios ---
+    s = s.strip()
 
-Formato: Numerado (1. 2. 3. etc), claro y conciso.
-Máximo 6 pasos.
-"""
-            
-            response = model.generate_content(
-                prompt,
-                generation_config=genai.types.GenerationConfig(
-                    max_output_tokens=500,
-                    temperature=0.3,
-                )
-            )
-            
-            # Parsear respuesta
-            text = response.text
-            lines = text.split('\n')
-            steps = []
-            
-            for line in lines:
-                line = line.strip()
-                if line and (line[0].isdigit() or line.startswith('•')):
-                    steps.append(line)
-            
-            return steps[:6]  # Máximo 6 pasos
-            
-        except Exception as e:
-            # Fallback a reglas si IA falla
-            return self.generate_steps_with_rules()
-    
-    def generate_steps_with_rules(self):
-        """Genera pasos usando reglas matemáticas (SIEMPRE FUNCIONA)"""
-        steps = []
-        
-        try:
-            # Paso 1: Identificar tipo
-            steps.append(f"1. Identificamos que es una integral: {self.method_detected}")
-            
-            # Paso 2: Simplificar
-            simplified = simplify(self.expr)
-            steps.append(f"2. Expresión a integrar: ${latex(self.expr)}$")
-            
-            # Paso 3: Método específico
-            if "Polinómica" in self.method_detected:
-                steps.append("3. Aplicamos la regla de potencia: ∫xⁿ dx = xⁿ⁺¹/(n+1) + C")
-            elif "Trigonométrica" in self.method_detected:
-                if "Seno" in self.method_detected:
-                    steps.append("3. Usamos: ∫sin(u) du = -cos(u) + C")
-                elif "Coseno" in self.method_detected:
-                    steps.append("3. Usamos: ∫cos(u) du = sin(u) + C")
+    # --- 4. Fracciones LaTeX: \frac{a}{b} -> (a)/(b) ---
+    # Primero con llaves, luego con paréntesis (después de conversión)
+    for _ in range(5):  # múltiples pasadas para fracciones anidadas
+        s = re.sub(r'\\frac\{([^{}]*)\}\{([^{}]*)\}', r'((\1)/(\2))', s)
+    s = re.sub(r'\\frac\(([^()]*)\)\(([^()]*)\)', r'((\1)/(\2))', s)
+
+    # --- 5. Potencias LaTeX: x^{2} -> x**(2), x^2 -> x**2 ---
+    s = re.sub(r'\^\{([^}]+)\}', r'**(\1)', s)
+    s = s.replace('^', '**')
+
+    # --- 6. Llaves a paréntesis ---
+    s = s.replace('{', '(').replace('}', ')')
+
+    # --- 7. Funciones trigonométricas LaTeX ---
+    trig_map = {
+        r'\\operatorname\{([a-zA-Z]+)\}': r'\1',
+        r'\\arcsin': 'asin', r'\\arccos': 'acos', r'\\arctan': 'atan',
+        r'\\sin': 'sin', r'\\cos': 'cos', r'\\tan': 'tan',
+        r'\\cot': 'cot', r'\\sec': 'sec', r'\\csc': 'csc',
+        r'\\sinh': 'sinh', r'\\cosh': 'cosh', r'\\tanh': 'tanh',
+        r'\\log': 'log', r'\\ln': 'log', r'\\exp': 'exp',
+        r'\\sqrt': 'sqrt', r'\\abs': 'Abs',
+        r'\\left': '', r'\\right': '',
+        r'\\cdot': '*', r'\\times': '*',
+        r'\\pi': 'pi', r'\\infty': 'oo', r'\\e': 'E',
+    }
+    for pattern, replacement in trig_map.items():
+        s = re.sub(pattern, replacement, s)
+
+    # --- 8. Constantes unicode ---
+    s = s.replace('π', 'pi').replace('∞', 'oo').replace('∫', '')
+
+    # --- 9. Potencias con superíndices unicode ---
+    superscripts = {'⁰':'0','¹':'1','²':'2','³':'3','⁴':'4',
+                    '⁵':'5','⁶':'6','⁷':'7','⁸':'8','⁹':'9'}
+    for sup, num in superscripts.items():
+        s = s.replace(sup, f'**{num}')
+
+    # --- 10. Limpiar backslashes restantes ---
+    s = re.sub(r'\\([a-zA-Z]+)', r'\1', s)
+
+    # --- 11. Número de Euler: e^x -> exp(x), e**(x) -> exp(x) ---
+    s = re.sub(r'\bE\*\*\(([^)]+)\)', r'exp(\1)', s)
+    s = re.sub(r'\bE\*\*([a-zA-Z0-9]+)', r'exp(\1)', s)
+
+    # --- 12. Multiplicación implícita ---
+    # 2x -> 2*x
+    s = re.sub(r'(\d)([a-zA-Z])', r'\1*\2', s)
+    # x2 -> x*2 (raro pero posible)
+    s = re.sub(r'([a-zA-Z])(\d)', r'\1*\2', s)
+    # 2( -> 2*(
+    s = re.sub(r'(\d)\(', r'\1*(', s)
+    # )( -> )*(
+    s = re.sub(r'\)\(', r')*(', s)
+    # )x -> )*x
+    s = re.sub(r'\)([a-zA-Z])', r')*\1', s)
+    # )2 -> )*2
+    s = re.sub(r'\)(\d)', r')*\1', s)
+
+    # --- 13. Limpiar espacios finales ---
+    s = re.sub(r'\s+', '', s)
+
+    return s
+
+
+def parse_expression(expr_str):
+    """Parsea una expresión con múltiples intentos de fallback."""
+    cleaned = clean_latex(expr_str)
+    print(f"[PARSER] Original: {repr(expr_str)}")
+    print(f"[PARSER] Limpio:   {repr(cleaned)}")
+
+    # Intento 1: parse_expr con transformaciones
+    try:
+        result = parse_expr(cleaned, local_dict=LOCAL_DICT, transformations=TRANSFORMATIONS)
+        print(f"[PARSER] OK (intento 1): {result}")
+        return result
+    except Exception as e1:
+        print(f"[PARSER] Intento 1 falló: {e1}")
+
+    # Intento 2: sympify directo
+    try:
+        result = sympify(cleaned, locals=LOCAL_DICT)
+        print(f"[PARSER] OK (intento 2): {result}")
+        return result
+    except Exception as e2:
+        print(f"[PARSER] Intento 2 falló: {e2}")
+
+    # Intento 3: parse_expr sin transformaciones
+    try:
+        result = parse_expr(cleaned, local_dict=LOCAL_DICT)
+        print(f"[PARSER] OK (intento 3): {result}")
+        return result
+    except Exception as e3:
+        print(f"[PARSER] Intento 3 falló: {e3}")
+
+    raise ValueError(f"No se pudo parsear: '{expr_str}' -> '{cleaned}'")
+
+
+def detect_method(expr, var):
+    """Detecta el método de integración más apropiado."""
+    try:
+        # Integración por partes: polinomio * trig, polinomio * exp, polinomio * log
+        args = Mul.make_args(expr)
+        if len(args) >= 2:
+            has_poly = any(a.is_polynomial(var) and not a.is_number for a in args)
+            has_trig = any(a.has(sin, cos, tan) for a in args)
+            has_exp  = any(a.has(exp) for a in args)
+            has_log  = any(a.has(log) for a in args)
+            if has_poly and (has_trig or has_exp or has_log):
+                return "Integración por Partes"
+
+        if expr.is_polynomial(var):
+            deg = degree(expr, var)
+            return f"Regla de Potencia (grado {deg})"
+        if expr.is_rational_function(var) and not expr.is_polynomial(var):
+            return "Fracciones Parciales"
+        if expr.has(sin) or expr.has(cos) or expr.has(tan):
+            if expr.has(sin) and expr.has(cos):
+                return "Trigonométrica Mixta"
+            return "Trigonométrica"
+        if expr.has(exp):
+            return "Exponencial"
+        if expr.has(log):
+            return "Logarítmica"
+        if expr.has(sqrt):
+            return "Radicales"
+        if expr.has(sinh) or expr.has(cosh):
+            return "Hiperbólica"
+        if expr.has(asin) or expr.has(acos) or expr.has(atan):
+            return "Trigonométrica Inversa"
+        return "Integración Simbólica General"
+    except:
+        return "General"
+
+
+# Mapeo de métodos a explicaciones legibles
+METHOD_INFO = {
+    "Regla de Potencia": {
+        "icon": "📐",
+        "color": "blue",
+        "formula": r"\int x^n \, dx = \frac{x^{n+1}}{n+1} + C",
+        "tip": "Suma 1 al exponente y divide entre el nuevo exponente."
+    },
+    "Trigonométrica": {
+        "icon": "📡",
+        "color": "purple",
+        "formula": r"\int \sin(x)\,dx = -\cos(x)+C \quad \int \cos(x)\,dx = \sin(x)+C",
+        "tip": "Usamos las fórmulas básicas de integración trigonométrica."
+    },
+    "Exponencial": {
+        "icon": "📈",
+        "color": "green",
+        "formula": r"\int e^x \, dx = e^x + C",
+        "tip": "La exponencial es su propia integral."
+    },
+    "Integración por Partes": {
+        "icon": "🔀",
+        "color": "orange",
+        "formula": r"\int u \, dv = uv - \int v \, du",
+        "tip": "Elegimos u y dv estratégicamente (regla LIATE)."
+    },
+    "Fracciones Parciales": {
+        "icon": "🧩",
+        "color": "pink",
+        "formula": r"\frac{P(x)}{Q(x)} = \frac{A}{x-r_1} + \frac{B}{x-r_2} + \cdots",
+        "tip": "Descomponemos la fracción en partes más simples."
+    },
+    "Radicales": {
+        "icon": "🔄",
+        "color": "teal",
+        "formula": r"x = \sin(\theta) \text{ o } x = \tan(\theta)",
+        "tip": "Usamos sustitución trigonométrica para eliminar la raíz."
+    },
+    "Logarítmica": {
+        "icon": "📝",
+        "color": "yellow",
+        "formula": r"\int \ln(x) \, dx = x\ln(x) - x + C",
+        "tip": "Aplicamos integración por partes con u = ln(x)."
+    },
+}
+
+
+def generate_steps(expr, result, method, var, limits=None):
+    steps = []
+    v = var
+
+    def s(title, type_, text, math=None, note=None):
+        d = {"title": title, "type": type_, "text": text}
+        if math: d["math"] = math
+        if note: d["note"] = note
+        steps.append(d)
+
+    try:
+        expr_l  = latex(expr)
+        res_l   = latex(result)
+
+        # ── PASO 1: Plantear ──────────────────────────────────────────
+        if limits:
+            a, b = limits
+            s("Plantear la integral", "identify",
+              "Tenemos una integral definida con límites de integración. "
+              "El resultado será un número real (el área bajo la curva).",
+              rf"\int_{{{latex(a)}}}^{{{latex(b)}}} {expr_l} \, dx")
+        else:
+            s("Plantear la integral", "identify",
+              "Tenemos una integral indefinida. "
+              "El resultado incluirá una constante de integración C, "
+              "ya que la derivada de cualquier constante es cero.",
+              rf"\int {expr_l} \, dx")
+
+        # ── PASO 2: Analizar la expresión ─────────────────────────────
+        simplified = simplify(expr)
+        expanded   = expand(expr)
+        if simplified != expr:
+            s("Analizar y simplificar", "identify",
+              "Antes de integrar, verificamos si la expresión puede simplificarse "
+              "para facilitar el cálculo.",
+              rf"{expr_l} = {latex(simplified)}")
+        else:
+            s("Analizar la expresión", "identify",
+              "Identificamos la estructura de la función: tipo de términos, "
+              "presencia de productos, cocientes o composiciones.",
+              rf"f(x) = {expr_l}")
+
+        # ── PASO 3: Método ────────────────────────────────────────────
+        method_key = next((k for k in METHOD_INFO if k in method), None)
+        info = METHOD_INFO.get(method_key, {"formula": "", "tip": ""})
+        s(f"Método seleccionado: {method}", "method",
+          info.get("tip", "Aplicamos el método más adecuado para esta expresión."),
+          info.get("formula") or None)
+
+        # ── PASO 4+: Cálculo específico por método ────────────────────
+
+        # --- REGLA DE POTENCIA ---
+        if "Potencia" in method:
+            terms = Add.make_args(expanded)
+            s("Separar en términos", "calc",
+              f"La integral de una suma es la suma de las integrales. "
+              f"Identificamos {len(terms)} término(s) independiente(s):",
+              rf"{latex(expanded)}")
+            partial_results = []
+            running = S.Zero
+            for term in terms:
+                coeff, base = term.as_coeff_Mul()
+                int_term = integrate(term, v)
+                running += int_term
+                # Explicar la regla aplicada
+                if base.is_symbol:          # coeff·x^1
+                    rule = rf"\int {latex(term)}\,dx = \frac{{{latex(coeff)}x^2}}{{2}}"
+                elif base.is_Number:        # constante
+                    rule = rf"\int {latex(term)}\,dx = {latex(term)} \cdot x"
                 else:
-                    steps.append("3. Aplicamos identidades trigonométricas")
-            elif "Exponencial" in self.method_detected:
-                steps.append("3. Usamos: ∫eˣ dx = eˣ + C")
-            elif "Logarítmica" in self.method_detected:
-                steps.append("3. Aplicamos integración por partes")
-            elif "Raíces" in self.method_detected:
-                steps.append("3. Aplicamos sustitución trigonométrica")
-            else:
-                steps.append("3. Aplicamos método de integración simbólica")
-            
-            # Paso 4: Resolución
-            steps.append(f"4. Resolvemos la integral")
-            
-            # Paso 5: Simplificación
-            steps.append(f"5. Simplificamos el resultado")
-            
-            # Paso 6: Resultado final
-            if self.limits:
-                steps.append(f"6. Evaluamos en los límites: {latex(self.result)}")
-            else:
-                steps.append(f"6. Resultado final: ${latex(self.result)}$ + C")
-            
-        except Exception as e:
-            steps = [
-                "1. Se detectó una integral",
-                "2. Se aplicaron técnicas de integración simbólica",
-                "3. Se simplificó el resultado",
-                f"4. Resultado: ${latex(self.result)}$"
-            ]
-        
-        return steps
+                    p = base.as_base_exp()[1] if base.is_Pow else 1
+                    rule = rf"\int {latex(term)}\,dx = {latex(int_term)}"
+                partial_results.append(rule)
+            s("Aplicar la Regla de Potencia a cada término", "calc",
+              r"Regla: $\int x^n\,dx = \dfrac{x^{n+1}}{n+1}$ — sumamos 1 al exponente y dividimos entre el nuevo exponente.",
+              r"\\[6pt]".join(partial_results))
+            s("Combinar los resultados", "calc",
+              "Sumamos todas las antiderivadas parciales obtenidas:",
+              rf"F(x) = {latex(integrate(expanded, v))}")
 
+        # --- TRIGONOMÉTRICA SIMPLE ---
+        elif "Trigonométrica" in method and "Mixta" not in method and "Partes" not in method:
+            if expr.has(sin) and not expr.has(cos):
+                s("Reconocer la fórmula del seno", "calc",
+                  "Esta es una integral trigonométrica directa. "
+                  "La antiderivada del seno es el coseno negativo:",
+                  rf"\int \sin(ax)\,dx = -\frac{{1}}{{a}}\cos(ax) + C")
+                s("Aplicar la fórmula", "calc",
+                  "Sustituimos directamente en la fórmula:",
+                  rf"\int {expr_l}\,dx = {res_l}")
+            elif expr.has(cos) and not expr.has(sin):
+                s("Reconocer la fórmula del coseno", "calc",
+                  "La antiderivada del coseno es el seno:",
+                  rf"\int \cos(ax)\,dx = \frac{{1}}{{a}}\sin(ax) + C")
+                s("Aplicar la fórmula", "calc",
+                  "Sustituimos directamente:",
+                  rf"\int {expr_l}\,dx = {res_l}")
+            elif expr.has(tan):
+                s("Reescribir la tangente", "calc",
+                  "Expresamos tan(x) como cociente para poder integrar:",
+                  rf"\tan(x) = \frac{{\sin(x)}}{{\cos(x)}}")
+                s("Aplicar sustitución u = cos(x)", "calc",
+                  "Con u = cos(x), du = −sin(x)dx, la integral se convierte en −∫du/u:",
+                  rf"\int \tan(x)\,dx = -\ln|\cos(x)| + C")
+            else:
+                s("Aplicar fórmula trigonométrica", "calc",
+                  "Usamos la tabla de integrales trigonométricas estándar:",
+                  rf"\int {expr_l}\,dx = {res_l}")
 
-# ====================================
-# MOTOR MATEMÁTICO AVANZADO
-# ====================================
+        # --- TRIGONOMÉTRICA MIXTA ---
+        elif "Mixta" in method:
+            s("Aplicar identidad de producto", "calc",
+              "Cuando aparece sin(x)·cos(x), usamos la identidad del ángulo doble "
+              "para reducir el grado de la expresión:",
+              rf"\sin(x)\cos(x) = \frac{{\sin(2x)}}{{2}}")
+            s("Integrar la expresión reducida", "calc",
+              "Ahora la integral es directa con la fórmula del seno:",
+              rf"\int \frac{{\sin(2x)}}{{2}}\,dx = -\frac{{\cos(2x)}}{{4}} + C")
+
+        # --- EXPONENCIAL ---
+        elif "Exponencial" in method and "Partes" not in method:
+            coeff_info = ""
+            try:
+                # Detectar e^(ax)
+                arg = expr.rewrite(exp).find(exp)
+                if arg:
+                    inner = list(arg)[0].args[0]
+                    c = inner.coeff(v)
+                    if c and c != 1:
+                        coeff_info = f" El coeficiente interno es {latex(c)}, así que dividimos entre él."
+            except: pass
+            s("Propiedad fundamental de la exponencial", "calc",
+              "La función exponencial es su propia antiderivada. "
+              "Si hay un coeficiente en el exponente, dividimos entre él." + coeff_info,
+              rf"\int e^{{ax}}\,dx = \frac{{1}}{{a}}e^{{ax}} + C")
+            s("Aplicar la fórmula", "calc",
+              "Sustituimos los valores concretos:",
+              rf"\int {expr_l}\,dx = {res_l}")
+
+        # --- INTEGRACIÓN POR PARTES ---
+        elif "Partes" in method:
+            s("Regla LIATE para elegir u", "calc",
+              "La regla LIATE nos dice el orden de prioridad para elegir u: "
+              "Logarítmica → Inversa trig. → Algebraica → Trigonométrica → Exponencial. "
+              "Elegimos u como el factor de mayor prioridad.",
+              rf"\int u\,dv = uv - \int v\,du")
+            args = Mul.make_args(expr)
+            u_c = dv_c = None
+            for arg in args:
+                if arg.has(log) or (arg.is_polynomial(v) and not arg.is_number):
+                    u_c = arg
+                else:
+                    dv_c = arg
+            if u_c is None: u_c = args[0]
+            if dv_c is None: dv_c = Mul(*[a for a in args if a is not u_c])
+            try:
+                du_c = diff(u_c, v)
+                vi_c = integrate(dv_c, v)
+                s("Asignar u y dv", "calc",
+                  f"Elegimos u = {latex(u_c)} porque tiene mayor prioridad LIATE. "
+                  f"El resto es dv:",
+                  rf"u = {latex(u_c)} \qquad dv = {latex(dv_c)}\,dx")
+                s("Calcular du y v", "calc",
+                  "Derivamos u para obtener du, e integramos dv para obtener v:",
+                  rf"du = {latex(du_c)}\,dx \qquad v = {latex(vi_c)}")
+                remaining = integrate(vi_c * du_c, v)
+                s("Sustituir en la fórmula", "calc",
+                  "Aplicamos ∫u dv = uv − ∫v du y resolvemos la integral restante:",
+                  rf"\int {expr_l}\,dx = {latex(u_c)}\cdot{latex(vi_c)} - \int {latex(vi_c)}\cdot{latex(du_c)}\,dx")
+                s("Resolver la integral restante", "calc",
+                  "La integral que queda es más simple y la resolvemos directamente:",
+                  rf"\int {latex(vi_c * du_c)}\,dx = {latex(remaining)}")
+            except: pass
+
+        # --- FRACCIONES PARCIALES ---
+        elif "Fracciones" in method:
+            apart_expr = apart(expr, v)
+            numer, denom = fraction(expr)
+            s("Factorizar el denominador", "calc",
+              "Para descomponer en fracciones parciales, primero factorizamos el denominador "
+              "e identificamos sus raíces:",
+              rf"\text{{Denominador: }} {latex(denom)}")
+            s("Descomponer en fracciones simples", "calc",
+              "Reescribimos la fracción como suma de fracciones con denominadores simples. "
+              "Cada factor lineal genera un término A/(x−r):",
+              rf"{latex(expr)} = {latex(apart_expr)}")
+            s("Integrar cada fracción", "calc",
+              "Cada fracción simple se integra con la fórmula ∫1/(x−a)dx = ln|x−a|:",
+              rf"\int {latex(apart_expr)}\,dx = {res_l}")
+
+        # --- LOGARÍTMICA ---
+        elif "Logarítmica" in method:
+            if expr == log(v):
+                s("Reconocer integral de ln(x)", "calc",
+                  "Esta integral no es directa. Usamos integración por partes con u = ln(x), dv = dx:",
+                  rf"u = \ln(x),\quad dv = dx \implies du = \frac{{1}}{{x}}dx,\quad v = x")
+                s("Aplicar integración por partes", "calc",
+                  "Sustituimos en la fórmula ∫u dv = uv − ∫v du:",
+                  rf"\int \ln(x)\,dx = x\ln(x) - \int x \cdot \frac{{1}}{{x}}\,dx = x\ln(x) - x + C")
+            else:
+                s("Aplicar fórmula logarítmica", "calc",
+                  "Usamos la regla ∫1/x dx = ln|x| o integramos por partes según el caso:",
+                  rf"\int {expr_l}\,dx = {res_l}")
+
+        # --- RADICALES ---
+        elif "Radicales" in method:
+            s("Identificar la sustitución", "calc",
+              "Las raíces cuadradas se eliminan con sustitución trigonométrica. "
+              "Según la forma del radicando elegimos la sustitución adecuada:",
+              rf"\sqrt{{1-x^2}} \to x=\sin\theta \quad \sqrt{{1+x^2}} \to x=\tan\theta \quad \sqrt{{x^2-1}} \to x=\sec\theta")
+            s("Aplicar la sustitución", "calc",
+              "Sustituimos, simplificamos usando identidades pitagóricas y resolvemos:",
+              rf"\int {expr_l}\,dx = {res_l}")
+
+        # --- HIPERBÓLICA ---
+        elif "Hiperbólica" in method:
+            s("Fórmulas hiperbólicas", "calc",
+              "Las funciones hiperbólicas tienen antiderivadas análogas a las trigonométricas:",
+              rf"\int \sinh(x)\,dx = \cosh(x)+C \qquad \int \cosh(x)\,dx = \sinh(x)+C")
+            s("Aplicar la fórmula", "calc",
+              "Sustituimos directamente:",
+              rf"\int {expr_l}\,dx = {res_l}")
+
+        # --- TRIG INVERSA ---
+        elif "Inversa" in method:
+            s("Fórmulas de trigonométricas inversas", "calc",
+              "Reconocemos la forma estándar que genera arcoseno, arcocoseno o arcotangente:",
+              rf"\int \frac{{1}}{{\sqrt{{1-x^2}}}}\,dx = \arcsin(x)+C \qquad \int \frac{{1}}{{1+x^2}}\,dx = \arctan(x)+C")
+            s("Aplicar la fórmula", "calc",
+              "Identificamos la forma y sustituimos:",
+              rf"\int {expr_l}\,dx = {res_l}")
+
+        # --- GENERAL ---
+        else:
+            s("Aplicar integración simbólica", "calc",
+              "Usamos el motor simbólico con múltiples estrategias (expansión, simplificación, "
+              "reescritura) para encontrar la antiderivada:",
+              rf"\int {expr_l}\,dx = {res_l}")
+
+        # ── PASO: Verificación ────────────────────────────────────────
+        if not limits:
+            try:
+                deriv = diff(result, v)
+                deriv_s = simplify(deriv)
+                expr_s  = simplify(expr)
+                match = simplify(deriv_s - expr_s) == 0
+                s("Verificar derivando el resultado", "verify",
+                  "Una forma de comprobar que la integral es correcta es derivar el resultado "
+                  "y verificar que obtenemos la función original:",
+                  rf"\frac{{d}}{{dx}}\left[{res_l}\right] = {latex(deriv_s)}",
+                  note="✓ Verificado" if match else "⚠ Revisar simplificación")
+            except: pass
+
+        # ── PASO FINAL ────────────────────────────────────────────────
+        if limits:
+            a, b = limits
+            antideriv = integrate(expr, v)
+            fa = antideriv.subs(v, b)
+            fb = antideriv.subs(v, a)
+            s("Evaluar en los límites (Teorema Fundamental)", "result",
+              f"Aplicamos el Teorema Fundamental del Cálculo: F(b) − F(a). "
+              f"Sustituimos x = {latex(b)} y x = {latex(a)} en la antiderivada:",
+              rf"\Big[{latex(antideriv)}\Big]_{{{latex(a)}}}^{{{latex(b)}}} "
+              rf"= \left({latex(fa)}\right) - \left({latex(fb)}\right) = {res_l}")
+        else:
+            s("Resultado final", "result",
+              "La antiderivada completa es (recuerda que C representa cualquier constante real, "
+              "ya que su derivada es siempre cero):",
+              rf"\boxed{{\int {expr_l}\,dx = {res_l} + C}}")
+
+    except Exception:
+        steps = [
+            {"title": "Expresión",  "type": "identify", "text": "Integral a resolver:",  "math": latex(expr)},
+            {"title": "Resultado",  "type": "result",   "text": "Resultado obtenido:",   "math": latex(result) + ("" if limits else " + C")},
+        ]
+
+    return steps
+
 
 class IntegralSolver:
-    """Motor avanzado de resolución de integrales con múltiples métodos"""
-    
     def __init__(self, expr_str, var='x', limits=None):
         self.expr_str = expr_str
         self.var = Symbol(var)
         self.limits = limits
         self.expr = None
-        self.simplified_expr = None
         self.result = None
-        self.method_detected = None
+        self.method = None
         self.steps = []
         self.errors = []
-        self.start_time = time.time()
-        
-    def parse_input(self):
-        """Parse varios formatos de entrada - MEJORADO"""
-        try:
-            expr_text = self.expr_str.strip()
-            
-            # Eliminar ∫ y dx si existen
-            expr_text = re.sub(r'∫\s*', '', expr_text)
-            expr_text = re.sub(r'd[a-zA-Z]\s*$', '', expr_text)
-            expr_text = re.sub(r'\s+', '', expr_text)  # Eliminar espacios
-            
-            # Conversiones básicas
-            expr_text = expr_text.replace("^", "**")
-            expr_text = expr_text.replace("{", "(").replace("}", ")")
-            
-            # LaTeX fracciones ANTES de otras sustituciones
-            expr_text = re.sub(r'\\frac\{([^}]+)\}\{([^}]+)\}', r'(\1)/(\2)', expr_text)
-            
-            # LaTeX funciones - SER CUIDADOSO CON "e"
-            expr_text = re.sub(r'\\sin\(', 'sin(', expr_text)
-            expr_text = re.sub(r'\\cos\(', 'cos(', expr_text)
-            expr_text = re.sub(r'\\tan\(', 'tan(', expr_text)
-            expr_text = re.sub(r'\\sqrt\{', 'sqrt(', expr_text)
-            expr_text = re.sub(r'\\log\(', 'log(', expr_text)
-            expr_text = expr_text.replace("\\ln", "log")
-            expr_text = expr_text.replace("ln(", "log(")
-            
-            # Reemplazar π
-            expr_text = expr_text.replace("π", "pi")
-            expr_text = expr_text.replace("∞", "oo")
-            
-            # Reemplazar "e" SOLO si es número de Euler aislado, no parte de función
-            # Buscar patrones como "e" seguido por operador o fin de string, pero NO en "exp"
-            expr_text = re.sub(r'\be([+\-*/()\^])', r'E\1', expr_text)
-            expr_text = re.sub(r'\be$', 'E', expr_text)
-            
-            # Arreglar multiplicación implícita
-            # Número seguido de letra: 2x -> 2*x
-            expr_text = re.sub(r'(\d)([a-zA-Z])', r'\1*\2', expr_text)
-            # Paréntesis seguido de letra: (x)sin -> (x)*sin
-            expr_text = re.sub(r'(\))([a-zA-Z])', r'\1*\2', expr_text)
-            # Letra seguida de paréntesis (pero NO si es función conocida)
-            funciones = ['sin', 'cos', 'tan', 'log', 'sqrt', 'exp', 'sinh', 'cosh', 'tanh', 'asin', 'acos', 'atan']
-            patron_funciones = '|'.join(funciones)
-            expr_text = re.sub(rf'([a-zA-Z])(\()', lambda m: m.group(1) + '*(' if not any(m.group(1).endswith(f) for f in funciones) else m.group(0), expr_text)
-            
-            # Paréntesis seguido de paréntesis: (x)(y) -> (x)*(y)
-            expr_text = re.sub(r'(\))(\()', r'\1*\2', expr_text)
-            
-            # Parse con transformaciones
-            transformations = (
-                standard_transformations + 
-                (implicit_multiplication_application, convert_xor)
-            )
-            
-            # Crear diccionario local con constantes
-            local_dict = {
-                'E': E,
-                'pi': pi,
-                'oo': oo,
-                'sin': sin, 'cos': cos, 'tan': tan,
-                'sinh': sinh, 'cosh': cosh, 'tanh': tanh,
-                'asin': asin, 'acos': acos, 'atan': atan,
-                'exp': exp, 'log': log, 'sqrt': sqrt,
-            }
-            
-            self.expr = parse_expr(expr_text, local_dict=local_dict, transformations=transformations)
-            self.steps.append(f"✓ Expresión parseada: ${latex(self.expr)}$")
-            return True
-            
-        except Exception as e:
-            self.errors.append(f"Error en parsing: {str(e)}")
-            return False
-    
-    def simplify_expr(self):
-        """Simplificar expresión inicial"""
-        try:
-            # Intentar expansión primero
-            expanded = expand(self.expr)
-            simplified = simplify(expanded)
-            
-            self.simplified_expr = simplified
-            if simplified != self.expr:
-                self.steps.append(
-                    f"✓ Simplificación: ${latex(self.expr)}$ → ${latex(self.simplified_expr)}$"
-                )
-                self.expr = self.simplified_expr
-            return True
-        except Exception as e:
-            self.errors.append(f"Error en simplificación: {str(e)}")
-            return False
-    
-    def analyze_integral_type(self):
-        """Analiza y detecta el tipo de integral"""
-        try:
-            expr = self.expr
-            
-            análisis = {
-                'is_polynomial': expr.is_polynomial(self.var),
-                'has_sin': expr.has(sin),
-                'has_cos': expr.has(cos),
-                'has_tan': expr.has(tan),
-                'has_exp': expr.has(exp),
-                'has_log': expr.has(log),
-                'has_sqrt': expr.has(sqrt),
-                'has_rational': any(arg.is_rational for arg in expr.free_symbols if isinstance(arg, (Rational, Float))),
-                'degree': degree(expr, self.var) if expr.is_polynomial(self.var) else None,
-            }
-            
-            return análisis
-        except:
-            return {}
-    
-    def detect_method(self):
-        """Detecta automáticamente el método de integración"""
-        try:
-            análisis = self.analyze_integral_type()
-            expr = self.expr
-            
-            # Polinómica
-            if análisis.get('is_polynomial'):
-                self.method_detected = "Regla de Potencia (Polinómica)"
-                self.steps.append(f"📊 Método: Regla de potencia: ∫xⁿ dx = (xⁿ⁺¹)/(n+1) + C")
-                return "polynomial"
-            
-            # Seno solo
-            elif análisis.get('has_sin') and not análisis.get('has_cos'):
-                self.method_detected = "Función Trigonométrica - Seno"
-                self.steps.append(f"🔢 Método: ∫sin(x) dx = -cos(x) + C")
-                return "trig_sin"
-            
-            # Coseno solo
-            elif análisis.get('has_cos') and not análisis.get('has_sin'):
-                self.method_detected = "Función Trigonométrica - Coseno"
-                self.steps.append(f"🔢 Método: ∫cos(x) dx = sin(x) + C")
-                return "trig_cos"
-            
-            # Tangente
-            elif análisis.get('has_tan'):
-                self.method_detected = "Función Trigonométrica - Tangente"
-                self.steps.append(f"🔢 Método: ∫tan(x) dx = -ln|cos(x)| + C")
-                return "trig_tan"
-            
-            # Trigonométricas mixtas
-            elif análisis.get('has_sin') and análisis.get('has_cos'):
-                self.method_detected = "Trigonometría Mixta (Identidades)"
-                self.steps.append(f"🔢 Método: Usar identidades trigonométricas")
-                return "trig_mixed"
-            
-            # Exponencial
-            elif análisis.get('has_exp') and not expr.is_polynomial(self.var):
-                self.method_detected = "Función Exponencial"
-                self.steps.append(f"📈 Método: ∫eˣ dx = eˣ + C")
-                return "exponential"
-            
-            # Logarítmica
-            elif análisis.get('has_log'):
-                self.method_detected = "Logarítmica (Integración por Partes)"
-                self.steps.append(f"📝 Método: Integración por partes")
-                return "logarithmic"
-            
-            # Raíces
-            elif análisis.get('has_sqrt'):
-                self.method_detected = "Raíces (Sustitución Trigonométrica)"
-                self.steps.append(f"🔄 Método: Sustitución trigonométrica")
-                return "radical"
-            
-            else:
-                self.method_detected = "Integración Simbólica General"
-                self.steps.append(f"🔍 Método: Análisis simbólico avanzado")
-                return "general"
-                
-        except Exception as e:
-            self.errors.append(f"Error en detección: {str(e)}")
-            self.method_detected = "General"
-            return "general"
-    
-    def solve_integral(self):
-        """Resuelve la integral usando múltiples estrategias"""
-        try:
-            method_type = self.detect_method()
-            
-            result = None
-            
-            # Estrategia 1: Integración directa de SymPy (más rápido)
-            try:
-                if self.limits:
-                    a, b = self.limits
-                    result = sympy_integrate(self.expr, (self.var, float(a), float(b)))
-                    self.steps.append(f"✓ Aplicando integración definida")
-                else:
-                    result = sympy_integrate(self.expr, self.var, meijerg=False)
-                    self.steps.append(f"✓ Aplicando integración indefinida")
-                
-                if result is not None and result != oo and result != -oo:
-                    self.result = result
-                    return True
-            except Exception as e:
-                pass
-            
-            # Estrategia 2: Método heurístico
-            if result is None:
-                try:
-                    result = heurisch(self.expr, self.var)
-                    if result is not None:
-                        self.steps.append("✓ Usando método heurístico avanzado")
-                        self.result = result
-                        return True
-                except:
-                    pass
-            
-            # Estrategia 3: Integración por partes manual
-            if result is None and method_type in ['logarithmic']:
-                try:
-                    result = self._integration_by_parts()
-                    if result:
-                        self.steps.append("✓ Aplicando integración por partes")
-                        self.result = result
-                        return True
-                except:
-                    pass
-            
-            # Estrategia 4: Sustituciones comunes
-            if result is None and method_type in ['radical']:
-                try:
-                    result = self._try_substitutions()
-                    if result:
-                        self.steps.append("✓ Aplicando sustitución trigonométrica")
-                        self.result = result
-                        return True
-                except:
-                    pass
-            
-            # Estrategia 5: Fracciones parciales
-            if result is None and method_type == 'general':
-                try:
-                    result = self._partial_fractions()
-                    if result:
-                        self.steps.append("✓ Usando descomposición en fracciones parciales")
-                        self.result = result
-                        return True
-                except:
-                    pass
-            
-            if result is not None:
-                self.result = result
-                return True
-            else:
-                self.errors.append("❌ No se pudo determinar una solución con los métodos disponibles")
-                return False
-                
-        except Exception as e:
-            self.errors.append(f"Error crítico: {str(e)}")
-            traceback.print_exc()
-            return False
-    
-    def _integration_by_parts(self):
-        """Integración por partes: ∫u dv = uv - ∫v du"""
-        try:
-            # Para expresiones como x*sin(x), x*exp(x), etc.
-            mul_terms = Add.make_args(self.expr)
-            
-            for term in mul_terms:
-                args = Mul.make_args(term)
-                if len(args) >= 2:
-                    # Intentar asignar u y dv
-                    for i, arg in enumerate(args):
-                        if not arg.is_constant(self.var):
-                            u = arg
-                            dv = Mul(*[a for j, a in enumerate(args) if j != i])
-                            du = diff(u, self.var)
-                            v = sympy_integrate(dv, self.var)
-                            if v is not None:
-                                result = u * v - sympy_integrate(v * du, self.var)
-                                return result
-            
-            return None
-        except:
-            return None
-    
-    def _try_substitutions(self):
-        """Intenta sustituciones trigonométricas comunes"""
-        try:
-            # sqrt(1-x^2): x = sin(u)
-            if self.expr.has(sqrt(1 - self.var**2)):
-                u = Symbol('u')
-                sub = self.expr.subs(self.var, sin(u)) * cos(u)
-                integral = sympy_integrate(sub, u)
-                return integral.subs(u, asin(self.var))
-            
-            # sqrt(x^2+1): x = tan(u)
-            if self.expr.has(sqrt(self.var**2 + 1)):
-                u = Symbol('u')
-                sub = self.expr.subs(self.var, tan(u)) * sec(u)**2
-                integral = sympy_integrate(sub, u)
-                return integral.subs(u, atan(self.var))
-            
-            # sqrt(x^2-1): x = sec(u)
-            if self.expr.has(sqrt(self.var**2 - 1)):
-                u = Symbol('u')
-                sub = self.expr.subs(self.var, sec(u)) * sec(u)*tan(u)
-                integral = sympy_integrate(sub, u)
-                return integral.subs(u, asec(self.var))
-            
-            return None
-        except:
-            return None
-    
-    def _partial_fractions(self):
-        """Descomposición en fracciones parciales"""
-        try:
-            # Para funciones racionales
-            if self.expr.has(1/self.var) or isinstance(self.expr, (Add, Mul)):
-                apart_expr = apart(self.expr, self.var)
-                result = sympy_integrate(apart_expr, self.var)
-                return result
-            return None
-        except:
-            return None
-    
-    def simplify_result(self):
-        """Simplifica el resultado final"""
-        try:
-            if self.result is not None:
-                # Intentar diferentes simplificaciones
-                simplified = simplify(self.result)
-                expanded = expand(simplified)
-                
-                if len(str(simplified)) < len(str(self.result)):
-                    self.steps.append(f"✓ Simplificación final")
-                    self.result = simplified
-                
-                return True
-        except Exception as e:
-            pass
-        
-        return True
-    
+        self.t0 = time.time()
+
     def solve(self):
-        """Ejecuta el proceso completo"""
+        # 1. Parsear
         try:
-            if not self.parse_input():
-                return False
-            
-            if not self.simplify_expr():
-                return False
-            
-            if not self.solve_integral():
-                return False
-            
-            self.simplify_result()
-            
-            return True
+            self.expr = parse_expression(self.expr_str)
         except Exception as e:
-            self.errors.append(f"Error general: {str(e)}")
+            self.errors.append(f"Error al parsear: {str(e)}")
             return False
-    
-    def get_latex(self):
-        """Retorna latex de expresiones"""
-        return {
-            "input": latex(self.expr) if self.expr else "",
-            "result": latex(self.result) if self.result else ""
-        }
-    
+
+        # 2. Detectar método
+        self.method = detect_method(self.expr, self.var)
+
+        # 3. Resolver con múltiples estrategias
+        result = self._try_all_strategies()
+
+        if result is None:
+            self.errors.append("No se encontró solución analítica para esta integral.")
+            return False
+
+        self.result = result
+
+        # 4. Generar pasos
+        self.steps = generate_steps(
+            self.expr, self.result, self.method, self.var, self.limits
+        )
+        return True
+
+    def _try_all_strategies(self):
+        """Intenta todas las estrategias disponibles en orden."""
+        expr = self.expr
+        var = self.var
+
+        # Estrategia 1: Integración directa SymPy
+        result = self._try(lambda: (
+            integrate(expr, (var, self.limits[0], self.limits[1]))
+            if self.limits else
+            integrate(expr, var)
+        ))
+        if result is not None:
+            print(f"[SOLVER] Estrategia 1 OK: {result}")
+            return result
+
+        # Estrategia 2: Expandir y reintentar
+        result = self._try(lambda: (
+            integrate(expand(expr), (var, self.limits[0], self.limits[1]))
+            if self.limits else
+            integrate(expand(expr), var)
+        ))
+        if result is not None:
+            print(f"[SOLVER] Estrategia 2 OK: {result}")
+            return result
+
+        # Estrategia 3: Simplificar y reintentar
+        result = self._try(lambda: (
+            integrate(simplify(expr), (var, self.limits[0], self.limits[1]))
+            if self.limits else
+            integrate(simplify(expr), var)
+        ))
+        if result is not None:
+            print(f"[SOLVER] Estrategia 3 OK: {result}")
+            return result
+
+        # Estrategia 4: Trigsimp para trigonométricas
+        if expr.has(sin) or expr.has(cos) or expr.has(tan):
+            result = self._try(lambda: (
+                integrate(trigsimp(expr), (var, self.limits[0], self.limits[1]))
+                if self.limits else
+                integrate(trigsimp(expr), var)
+            ))
+            if result is not None:
+                print(f"[SOLVER] Estrategia 4 (trigsimp) OK: {result}")
+                return result
+
+        # Estrategia 5: Apart para racionales
+        result = self._try(lambda: (
+            integrate(apart(expr, var), (var, self.limits[0], self.limits[1]))
+            if self.limits else
+            integrate(apart(expr, var), var)
+        ))
+        if result is not None:
+            print(f"[SOLVER] Estrategia 5 (apart) OK: {result}")
+            return result
+
+        # Estrategia 6: Rewrite en formas alternativas
+        for rewrite_form in [exp, cos, sin, tan, log]:
+            result = self._try(lambda f=rewrite_form: (
+                integrate(expr.rewrite(f), (var, self.limits[0], self.limits[1]))
+                if self.limits else
+                integrate(expr.rewrite(f), var)
+            ))
+            if result is not None:
+                print(f"[SOLVER] Estrategia 6 (rewrite {rewrite_form}) OK: {result}")
+                return result
+
+        # Estrategia 7: meijerg=True para funciones especiales
+        if not self.limits:
+            result = self._try(lambda: integrate(expr, var, meijerg=True))
+            if result is not None and not result.has(Integral):
+                print(f"[SOLVER] Estrategia 7 (meijerg) OK: {result}")
+                return result
+
+        # Estrategia 8: manual_integral para casos difíciles
+        if not self.limits:
+            result = self._try(lambda: integrate(expr, var, manual=True))
+            if result is not None and not result.has(Integral):
+                print(f"[SOLVER] Estrategia 8 (manual) OK: {result}")
+                return result
+
+        print("[SOLVER] Todas las estrategias fallaron")
+        return None
+
+    def _try(self, fn):
+        """Ejecuta una función y retorna None si falla o si el resultado es inválido."""
+        try:
+            r = fn()
+            if r is None:
+                return None
+            if r == oo or r == -oo or r == zoo or r == nan:
+                return None
+            if isinstance(r, Integral):
+                return None
+            # Verificar que no sea una integral sin resolver
+            if hasattr(r, 'has') and r.has(Integral):
+                return None
+            return r
+        except Exception as e:
+            print(f"[SOLVER] Estrategia falló: {e}")
+            return None
+
     def get_response(self):
-        """Retorna respuesta JSON profesional"""
-        success = self.result is not None and len(self.errors) == 0
-        
-        # Generar pasos con IA o reglas
-        if success:
-            explainer = IntegrationExplainer(self.expr, self.result, self.method_detected, self.limits)
-            
-            if GEMINI_AVAILABLE:
-                steps_ia = explainer.generate_steps_with_ai()
-            else:
-                steps_ia = []
-            
-            # Combinar pasos inteligentes + pasos IA
-            final_steps = self.steps + steps_ia
-        else:
-            final_steps = self.steps
-        
-        gemini_used = success and GEMINI_AVAILABLE and len(final_steps) > len(self.steps)
-        
+        success = self.result is not None
         return {
-            "input": latex(self.expr) if self.expr else self.expr_str,
-            "simplified_expression": latex(self.simplified_expr) if self.simplified_expr else "",
-            "method_detected": self.method_detected or "Desconocido",
-            "steps": final_steps,
-            "result": latex(self.result) if self.result else "No se pudo resolver",
-            "latex": self.get_latex(),
             "success": success,
+            "input": latex(self.expr) if self.expr else self.expr_str,
+            "result": latex(self.result) if self.result else "No se pudo resolver",
+            "method_detected": self.method or "Desconocido",
+            "steps": self.steps,
             "errors": self.errors,
-            "computation_time": f"{(time.time() - self.start_time):.3f}s",
-            "gemini_available": GEMINI_AVAILABLE,
-            "gemini_used": gemini_used
+            "computation_time": f"{time.time() - self.t0:.3f}s"
         }
 
+
+# ============ AUTH ============
 
 def login_required(f):
-    """Decorador para proteger rutas"""
     @wraps(f)
-    def decorated_function(*args, **kwargs):
+    def decorated(*args, **kwargs):
         if 'user' not in session:
             if request.is_json or request.path.startswith('/api/'):
                 return jsonify({"error": "No autenticado"}), 401
             return redirect(url_for('login'))
         return f(*args, **kwargs)
-    return decorated_function
+    return decorated
 
-
-# ====================================
-# RUTAS DE AUTENTICACIÓN
-# ====================================
 
 @app.route("/", methods=["GET", "POST"])
 def login():
-    """Página de login"""
     if request.method == "POST":
-        username = request.form.get("username", "").strip()
-        password = request.form.get("password", "").strip()
-        
-        if username in USERS and USERS[username] == password:
-            session['user'] = username
+        u = request.form.get("username", "").strip()
+        p = request.form.get("password", "").strip()
+        if USERS.get(u) == p:
+            session['user'] = u
             return redirect(url_for('dashboard'))
-        else:
-            return render_template("login.html", error="Credenciales inválidas")
-    
+        return render_template("login.html", error="Credenciales inválidas")
     if 'user' in session:
         return redirect(url_for('dashboard'))
-    
     return render_template("login.html")
 
 
 @app.route("/app")
 @login_required
 def dashboard():
-    """Dashboard principal"""
     return render_template("index.html")
 
 
 @app.route("/logout")
 def logout():
-    """Logout"""
     session.clear()
     return redirect(url_for('login'))
 
 
-# ====================================
-# API REST AVANZADA
-# ====================================
+# ============ API ============
 
 @app.route("/api/resolver", methods=["POST"])
 @login_required
-def resolver():
-    """API para resolver integrales - Motor Profesional"""
+def api_resolver():
     try:
         data = request.json or {}
         expr_text = data.get("integral", "").strip()
         a = data.get("a")
         b = data.get("b")
-        
+
         if not expr_text:
-            return jsonify({
-                "success": False,
-                "error": "Expresión vacía",
-                "steps": []
-            }), 400
-        
-        # Crear límites si existen
+            return jsonify({"success": False, "error": "Expresión vacía", "steps": []}), 400
+
         limits = None
-        if a is not None and b is not None:
+        if a not in (None, "") and b not in (None, ""):
             try:
-                limits = (float(a), float(b))
+                limits = (sympify(str(a)), sympify(str(b)))
             except:
                 pass
-        
-        # Resolver usando el motor avanzado
-        solver = IntegralSolver(expr_text, var='x', limits=limits)
-        
-        if solver.solve():
-            return jsonify(solver.get_response()), 200
-        else:
-            return jsonify(solver.get_response()), 400
-    
+
+        solver = IntegralSolver(expr_text, limits=limits)
+        solver.solve()
+        resp = solver.get_response()
+        return jsonify(resp), 200 if resp["success"] else 400
+
     except Exception as e:
         traceback.print_exc()
-        return jsonify({
-            "success": False,
-            "error": f"Error del servidor: {str(e)}",
-            "steps": []
-        }), 500
-
-
-@app.route("/resolver", methods=["POST"])
-@login_required
-def resolver_legacy():
-    """Endpoint legado para compatibilidad"""
-    return resolver()
+        return jsonify({"success": False, "error": str(e), "steps": []}), 500
 
 
 @app.route("/api/graficar", methods=["POST"])
 @login_required
-def graficar():
-    """API para generar gráficos"""
+def api_graficar():
     try:
         data = request.json or {}
         expr_text = data.get("integral", "").strip()
-        
         if not expr_text:
             return jsonify({"error": "Expresión vacía"}), 400
-        
-        # Parsear expresión
+
         try:
-            expr = parse_expr(expr_text.replace("^", "**").replace(" ", ""),
-                            transformations=standard_transformations + (implicit_multiplication_application,))
+            expr = parse_expression(expr_text)
         except Exception as e:
-            return jsonify({"error": f"Error en parsing: {str(e)}"}), 400
-        
-        # Obtener límites
+            return jsonify({"error": f"Error al parsear: {e}"}), 400
+
         a = data.get("a")
         b = data.get("b")
-        
         try:
-            a_val = float(a) if a else -5
-            b_val = float(b) if b else 5
+            a_val = float(a) if a not in (None, "") else -5.0
+            b_val = float(b) if b not in (None, "") else 5.0
         except:
-            a_val, b_val = -5, 5
-        
-        # Generar puntos
-        x_vals = np.linspace(a_val, b_val, 400)
+            a_val, b_val = -5.0, 5.0
+
+        x_vals = np.linspace(a_val, b_val, 500)
         y_list = []
-        
-        # Evaluar función
+
         try:
             f = lambdify(x, expr, modules=['numpy'])
-            y_vals = f(x_vals)
-            
-            for y in y_vals:
+            y_raw = f(x_vals)
+            for yv in (y_raw if hasattr(y_raw, '__iter__') else [y_raw] * len(x_vals)):
                 try:
-                    y_float = float(y)
-                    if np.isnan(y_float) or np.isinf(y_float):
-                        y_list.append(None)
-                    else:
-                        y_list.append(y_float)
+                    yf = float(yv)
+                    y_list.append(None if (np.isnan(yf) or np.isinf(yf)) else yf)
                 except:
                     y_list.append(None)
-        
         except:
-            # Fallback punto a punto
-            for x_val in x_vals:
+            for xv in x_vals:
                 try:
-                    y_val = expr.subs(x, x_val)
-                    y_float = float(y_val)
-                    if np.isnan(y_float) or np.isinf(y_float):
-                        y_list.append(None)
-                    else:
-                        y_list.append(y_float)
+                    yf = float(expr.subs(x, xv))
+                    y_list.append(None if (np.isnan(yf) or np.isinf(yf)) else yf)
                 except:
                     y_list.append(None)
-        
-        return jsonify({
-            "x": x_vals.tolist(),
-            "y": y_list,
-            "a": float(a_val),
-            "b": float(b_val)
-        })
-    
+
+        return jsonify({"x": x_vals.tolist(), "y": y_list, "a": a_val, "b": b_val})
+
     except Exception as e:
         traceback.print_exc()
-        return jsonify({"error": f"Error: {str(e)}"}), 500
-
-
-@app.route("/graficar", methods=["POST"])
-@login_required
-def graficar_legacy():
-    """Endpoint legado"""
-    return graficar()
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/derivada", methods=["POST"])
 @login_required
-def derivada():
-    """API para calcular derivadas"""
+def api_derivada():
     try:
         data = request.json or {}
         expr_text = data.get("expresion", "").strip()
-        
         if not expr_text:
             return jsonify({"error": "Expresión vacía"}), 400
-        
-        try:
-            expr = parse_expr(expr_text.replace("^", "**").replace(" ", ""),
-                            transformations=standard_transformations + (implicit_multiplication_application,))
-            
-            resultado = diff(expr, x)
-            
-            return jsonify({
-                "success": True,
-                "input": latex(expr),
-                "result": latex(resultado),
-                "steps": [f"d/dx [{latex(expr)}] = {latex(resultado)}"]
-            })
-        
-        except Exception as e:
-            return jsonify({
-                "success": False,
-                "error": str(e),
-                "steps": []
-            }), 400
-    
+        expr = parse_expression(expr_text)
+        result = diff(expr, x)
+        return jsonify({
+            "success": True,
+            "input": latex(expr),
+            "result": latex(result),
+            "steps": [f"\\frac{{d}}{{dx}}\\left[{latex(expr)}\\right] = {latex(result)}"]
+        })
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"success": False, "error": str(e), "steps": []}), 400
 
-
-@app.route("/derivada", methods=["POST"])
-@login_required
-def derivada_legacy():
-    """Endpoint legado"""
-    return derivada()
-
-
-@app.route("/api/info", methods=["GET"])
-@login_required
-def info():
-    """Info sobre el motor profesional"""
-    return jsonify({
-        "nombre": "CarlosTech Math AI - Motor Profesional",
-        "version": "3.5 Pro con IA",
-        "motor": "SymPy + Google Gemini (IA Gratuita)",
-        "gemini_disponible": GEMINI_AVAILABLE,
-        "descripcion": "Motor avanzado similar a Mathway y Wolfram Alpha",
-        "capacidades": [
-            "✅ Polinómicas",
-            "✅ Trigonométricas",
-            "✅ Exponenciales",
-            "✅ Logarítmicas",
-            "✅ Radicales",
-            "✅ Racionales",
-            "✅ Integración por partes automática",
-            "✅ Sustitución trigonométrica",
-            "✅ Fracciones parciales",
-            "✅ Pasos detallados con IA",
-            "✅ Gráficos interactivos",
-            "✅ Derivadas"
-        ],
-        "metodos": [
-            "Integración directa de SymPy",
-            "Método heurístico",
-            "Integración por partes",
-            "Sustituciones trigonométricas",
-            "Descomposición en fracciones parciales",
-            "Análisis automático con IA Gemini"
-        ]
-    })
-
-
-# ====================================
-# MANEJO DE ERRORES
-# ====================================
 
 @app.errorhandler(404)
-def not_found(error):
-    return jsonify({"error": "Recurso no encontrado"}), 404
-
+def not_found(e):
+    return jsonify({"error": "No encontrado"}), 404
 
 @app.errorhandler(500)
-def server_error(error):
-    return jsonify({"error": "Error interno del servidor"}), 500
+def server_error(e):
+    return jsonify({"error": "Error interno"}), 500
 
-
-# ====================================
-# MAIN
-# ====================================
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
-    
-    # Mensaje de startup profesional
-    print("\n" + "="*80)
-    print("   🚀 CarlosTech Math AI - Motor de Integrales v3.5 Pro")
-    print("="*80)
-    print(f"   📊 Motor: SymPy + Google Gemini")
-    print(f"   🤖 IA Gemini: {'✅ HABILITADA' if GEMINI_AVAILABLE else '⚠️  NO DISPONIBLE (función offline)'}")
-    print(f"   📝 Autenticación: Activada")
-    print(f"   🔗 URL: http://localhost:{port}")
-    print("="*80)
-    print("   Características:")
-    print("   ✨ Integrales (indefinidas y definidas)")
-    print("   ✨ Múltiples métodos automáticos")
-    print("   ✨ Pasos detallados con IA")
-    print("   ✨ Gráficos interactivos")
-    print("   ✨ API REST profesional")
-    print("="*80 + "\n")
-    
+    print(f"\n{'='*60}")
+    print(f"  CarlosTech Math AI v5.0")
+    print(f"  http://localhost:{port}")
+    print(f"{'='*60}\n")
     app.run(host="0.0.0.0", port=port, debug=False)

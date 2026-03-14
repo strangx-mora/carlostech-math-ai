@@ -2,336 +2,1052 @@
 <html lang="es">
 
 <head>
-
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<title>CarlosTech Math AI</title>
-
-<link rel="stylesheet" href="/static/style.css">
-
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mathquill@0.10.1/build/mathquill.css">
-
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/mathquill@0.10.1/build/mathquill.js"></script>
-
-<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
-
-<!-- PLOTLY PARA GRÁFICAS -->
-<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
-
-<style>
-input::placeholder{
-  color:rgba(226, 232, 240, 0.4);
-}
-</style>
-
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>CarlosTech Math AI - Resolvedor de Integrales</title>
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mathquill@0.10.1/build/mathquill.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- SCRIPTS -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mathquill@0.10.1/build/mathquill.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script>
 </head>
 
 <body>
-
-<!-- BOTON MENU MOVIL -->
-
-<div class="menu-btn" onclick="toggleSidebar()">☰</div>
-
-<!-- SIDEBAR -->
-
-<div class="sidebar" id="sidebar">
-
-<h2>CarlosTech</h2>
-
-<a href="#" onclick="modoIntegral()">Integrales</a>
-
-<a href="#">Gráficas</a>
-
-<hr style="margin: 20px 0; border: none; border-top: 1px solid rgba(255,255,255,0.1);">
-
-<a href="/logout" style="color: #ff6b6b;">🚪 Cerrar sesión</a>
-
-</div>
-
-<!-- MAIN -->
-
-<div class="main">
-
-<div class="title">Motor Matemático IA</div>
-
-<div class="subtitle">Resuelve integrales paso a paso</div>
-
-<div class="card">
-
-<!-- EDITOR -->
-
-<div id="math-input" class="mathbox"></div>
-
-<!-- LIMITES -->
-
-<div class="limites">
-
-<input id="limiteA" placeholder="Límite inferior (opcional)">
-
-<input id="limiteB" placeholder="Límite superior (opcional)">
-
-</div>
-
-<button class="solve" onclick="resolver()">🚀 Resolver Integral</button>
-
-<!-- FORMATO AYUDA -->
-<div class="format-help">
-  <p style="font-size: 12px; color: #94a3b8; margin-top: 10px;">
-    💡 Formato: <code>x**2</code>, <code>sin(x)</code>, <code>x**2 + 2*x</code>, <code>exp(x)</code>
-  </p>
-</div>
-
-<!-- TECLADO -->
-
-<div class="keyboard">
-
-<div class="key" onclick="insert('x')">x</div>
-<div class="key" onclick="insert('^2')">x²</div>
-<div class="key" onclick="insert('^3')">x³</div>
-
-<div class="key" onclick="insert('+')">+</div>
-<div class="key" onclick="insert('-')">−</div>
-
-<div class="key" onclick="insert('*')">×</div>
-<div class="key" onclick="insert('/')">÷</div>
-
-<div class="key" onclick="insert('\\sqrt{}')">√</div>
-<div class="key" onclick="insert('\\frac{}{}')">a/b</div>
-
-<div class="key" onclick="insert('\\sin')">sin</div>
-<div class="key" onclick="insert('\\cos')">cos</div>
-<div class="key" onclick="insert('\\tan')">tan</div>
-
-</div>
-
-<!-- RESULTADO -->
-
-<div id="resultado" class="result"></div>
-
-<!-- GRÁFICA -->
-
-<div id="grafica-container" class="grafica-container">
-  <div id="grafica" class="grafica"></div>
-</div>
-
-<!-- PASOS -->
-
-<div id="pasos" class="steps"></div>
-
-</div>
-
-</div>
-
-<script>
-
-let modo="integral";
-
-var MQ = MathQuill.getInterface(2);
-
-var mathField = MQ.MathField(document.getElementById('math-input'));
-
-function insert(val){
-
-mathField.write(val);
-mathField.focus();
-
-}
-
-function toggleSidebar(){
-
-document.getElementById("sidebar").classList.toggle("active");
-
-}
-
-function modoIntegral(){
-
-modo="integral";
-
-}
-
-function resolver(){
-
-let latex = mathField.latex();
-
-if(!latex || latex.trim() === ""){
-  alert("Por favor ingresa una expresión");
-  return;
-}
-
-let a = document.getElementById("limiteA").value || null;
-let b = document.getElementById("limiteB").value || null;
-
-// Mostrar estado de carga
-document.getElementById("resultado").innerHTML = "<p style='color: #94a3b8;'>⏳ Resolviendo con motor avanzado...</p>";
-document.getElementById("pasos").innerHTML = "";
-document.getElementById("grafica").innerHTML = "";
-
-fetch("/api/resolver",{
-  method:"POST",
-  headers:{
-    "Content-Type":"application/json"
-  },
-  body:JSON.stringify({
-    integral:latex,
-    a:a,
-    b:b
-  })
-})
-
-.then(res=>res.json())
-
-.then(data=>{
-  if(!data.success){
-    document.getElementById("resultado").innerHTML = `<p style='color: #ff6b6b;'>❌ ${data.error || 'Error desconocido'}</p>`;
-    if(data.errors && data.errors.length > 0){
-      document.getElementById("pasos").innerHTML = `<div class='error'><p>${data.errors.join('<br>')}</p></div>`;
-    }
-    return;
-  }
-
-  document.getElementById("resultado").innerHTML = `<div class='resultado-box'>$$${data.result}$$</div>`;
-
-  if(data.steps && data.steps.length > 0){
-    mostrarPasos(data.steps, data.method_detected, data.computation_time);
-  }
-
-  // Graficar la función
-  graficarFuncion(latex, a, b);
-
-  // Renderizar math
-  MathJax.typeset();
-})
-
-.catch(err=>{
-  console.error("Error:", err);
-  document.getElementById("resultado").innerHTML = "<p style='color: #ff6b6b;'>❌ Error en la solicitud</p>";
-})
-
-}
-
-function graficarFuncion(latex, a, b){
-
-fetch("/api/graficar",{
-  method:"POST",
-  headers:{
-    "Content-Type":"application/json"
-  },
-  body:JSON.stringify({
-    integral:latex,
-    a:a,
-    b:b
-  })
-})
-
-.then(res=>res.json())
-
-.then(data=>{
-
-if(data.error){
-  console.error("Error:", data.error);
-  return;
-}
-
-// Crear traza
-let trace = {
-  x: data.x,
-  y: data.y,
-  mode: 'lines',
-  name: 'f(x)',
-  line: {color: '#3b82f6', width: 3},
-  hovertemplate: '<b>x:</b> %{x:.4f}<br><b>f(x):</b> %{y:.4f}<extra></extra>'
-};
-
-let traces = [trace];
-
-// Relleno si hay límites
-if(data.a !== null && data.b !== null && typeof data.a === 'number' && typeof data.b === 'number'){
-  let a_val = data.a;
-  let b_val = data.b;
-  let x_fill = [];
-  let y_fill = [];
-
-  for(let i = 0; i < data.x.length; i++){
-    if(data.x[i] >= a_val && data.x[i] <= b_val && data.y[i] !== null && isFinite(data.y[i])){
-      x_fill.push(data.x[i]);
-      y_fill.push(data.y[i]);
-    }
-  }
-
-  if(x_fill.length > 0){
-    let fillTrace = {
-      x: x_fill,
-      y: y_fill,
-      fill: 'tozeroy',
-      fillcolor: 'rgba(59, 130, 246, 0.25)',
-      line: {color: 'rgba(59, 130, 246, 0)'},
-      showlegend: true,
-      name: 'Área integral',
-      hoverinfo: 'skip'
-    };
-    traces.push(fillTrace);
-  }
-}
-
-let layout = {
-  title: {text: '📊 Gráfica de la Función', font: {color: '#e0e7ff', size: 18}},
-  xaxis: {
-    title: 'x',
-    color: '#cbd5e1',
-    gridcolor: 'rgba(226, 232, 240, 0.1)',
-  },
-  yaxis: {
-    title: 'f(x)',
-    color: '#cbd5e1',
-    gridcolor: 'rgba(226, 232, 240, 0.1)',
-  },
-  plot_bgcolor: 'rgba(15, 23, 42, 0.6)',
-  paper_bgcolor: 'rgba(30, 41, 59, 0.8)',
-  font: {color: '#cbd5e1', family: "'Segoe UI', 'Roboto', sans-serif"},
-  hovermode: 'closest',
-  margin: {t: 50, l: 70, r: 50, b: 70}
-};
-
-Plotly.newPlot('grafica', traces, layout, {responsive: true, displayModeBar: true});
-
-})
-
-.catch(err=>{
-  console.error("Error:", err);
-})
-
-}
-
-function mostrarPasos(steps, method, time){
-
-let contenedor = document.getElementById("pasos");
-
-let html = `<div style='color: #3b82f6; margin-bottom: 25px;'>
-  <h2 style='font-size: 22px; font-weight: 700; margin-bottom: 10px;'>📚 Pasos Detallados</h2>
-  <p style='color: #94a3b8; font-size: 14px;'>
-    <strong>${method}</strong> | Tiempo: ${time}
-  </p>
-</div>`;
-
-if(steps && steps.length > 0){
-  steps.forEach((step, idx) => {
-    html += `<div class='paso-premium' style='animation-delay: ${idx * 0.1}s;'>
-      <div class='paso-content'>${step}</div>
-    </div>`;
-  });
-} else {
-  html += "<p style='color: #94a3b8;'>Sin pasos detallados</p>";
-}
-
-contenedor.innerHTML = html;
-
-setTimeout(() => MathJax.typeset(), 100);
-
-}
-
-</script>
+    <!-- NAVBAR -->
+    <nav class="navbar" id="navbar">
+        <div class="navbar-container">
+
+            <!-- LEFT: logo -->
+            <div class="navbar-left">
+                <div class="nav-logo">
+                    <div class="nav-logo-icon">∫</div>
+                    <div class="nav-logo-text">
+                        <span class="nav-brand">CarlosTech</span>
+                        <span class="nav-sub">Math AI</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CENTER: nav links -->
+            <div class="navbar-center">
+                <a href="#" class="nav-link active" onclick="scrollToSection(event,'.input-section')">
+                    <i class="fas fa-square-root-variable"></i>
+                    Integrales
+                </a>
+                <a href="#" class="nav-link" onclick="scrollToSection(event,'#grafica-card')">
+                    <i class="fas fa-chart-line"></i>
+                    Gráfica
+                </a>
+                <a href="#" class="nav-link" onclick="scrollToSection(event,'#pasos-card')">
+                    <i class="fas fa-list-ol"></i>
+                    Pasos
+                </a>
+            </div>
+
+            <!-- RIGHT: badge + user -->
+            <div class="navbar-right">
+                <div class="nav-status">
+                    <span class="status-dot"></span>
+                    <span class="status-text">Online</span>
+                </div>
+
+                <div class="nav-divider"></div>
+
+                <div class="nav-user" id="navUser">
+                    <div class="nav-avatar">C</div>
+                    <div class="nav-user-info">
+                        <span class="nav-username">Carlos</span>
+                        <span class="nav-role">Estudiante</span>
+                    </div>
+                    <i class="fas fa-chevron-down nav-chevron"></i>
+
+                    <div class="nav-dropdown" id="navDropdown">
+                        <div class="dropdown-header">
+                            <div class="dropdown-avatar">C</div>
+                            <div>
+                                <div class="dropdown-name">Carlos</div>
+                                <div class="dropdown-email">carlos@carlostech.ai</div>
+                            </div>
+                        </div>
+                        <div class="dropdown-divider"></div>
+                        <a href="#" class="dropdown-item" onclick="openModal('modal-perfil');event.stopPropagation()">
+                            <i class="fas fa-user"></i> Mi perfil
+                        </a>
+                        <a href="#" class="dropdown-item" onclick="openModal('modal-historial');event.stopPropagation()">
+                            <i class="fas fa-clock-rotate-left"></i> Historial
+                        </a>
+                        <a href="#" class="dropdown-item" onclick="openModal('modal-config');event.stopPropagation()">
+                            <i class="fas fa-gear"></i> Configuración
+                        </a>
+                        <div class="dropdown-divider"></div>
+                        <a href="/logout" class="dropdown-item dropdown-logout">
+                            <i class="fas fa-arrow-right-from-bracket"></i> Cerrar sesión
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Hamburger mobile -->
+                <button class="nav-hamburger" id="menuToggle">
+                    <span></span><span></span><span></span>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- MOBILE DRAWER -->
+    <aside class="drawer" id="sidebar">
+        <div class="drawer-header">
+            <div class="nav-logo">
+                <div class="nav-logo-icon">∫</div>
+                <div class="nav-logo-text">
+                    <span class="nav-brand">CarlosTech</span>
+                    <span class="nav-sub">Math AI</span>
+                </div>
+            </div>
+            <button class="drawer-close" id="closeSidebar"><i class="fas fa-xmark"></i></button>
+        </div>
+        <nav class="drawer-nav">
+            <a href="#" class="drawer-link active" onclick="scrollToSection(event,'.input-section')">
+                <span class="drawer-link-icon blue"><i class="fas fa-square-root-variable"></i></span>
+                Integrales
+            </a>
+            <a href="#" class="drawer-link" onclick="scrollToSection(event,'#grafica-card')">
+                <span class="drawer-link-icon purple"><i class="fas fa-chart-line"></i></span>
+                Gráfica
+            </a>
+            <a href="#" class="drawer-link" onclick="scrollToSection(event,'#pasos-card')">
+                <span class="drawer-link-icon green"><i class="fas fa-list-ol"></i></span>
+                Pasos
+            </a>
+        </nav>
+        <div class="drawer-footer">
+            <a href="/logout" class="drawer-logout">
+                <i class="fas fa-arrow-right-from-bracket"></i> Cerrar sesión
+            </a>
+        </div>
+    </aside>
+
+    <!-- OVERLAY -->
+    <div class="overlay" id="overlay"></div>
+
+    <!-- MAIN CONTENT -->
+    <main class="main-content">
+        <!-- HERO SECTION -->
+        <section class="hero">
+            <canvas class="hero-canvas" id="heroCanvas"></canvas>
+            <div class="hero-content">
+                <div class="hero-badge">
+                    <span class="badge-dot"></span>
+                    <span>Motor IA · SymPy 1.13 · 5 métodos</span>
+                </div>
+                <h1 class="hero-title">
+                    <span class="title-line">Resuelve integrales</span>
+                    <span class="title-line gradient-text">como un experto</span>
+                </h1>
+                <p class="hero-subtitle">Soluciones paso a paso con detección automática de método — polinómicas, trigonométricas, por partes y más.</p>
+                <div class="hero-actions">
+                    <button class="hero-cta" onclick="document.querySelector('.input-section').scrollIntoView({behavior:'smooth'})">
+                        <i class="fas fa-play"></i>
+                        Resolver ahora
+                    </button>
+                    <div class="hero-hint">
+                        <i class="fas fa-bolt"></i>
+                        Resultados en &lt;0.1s
+                    </div>
+                </div>
+                <div class="hero-stats">
+                    <div class="stat-card">
+                        <span class="stat-number">1000+</span>
+                        <span class="stat-label">Expresiones</span>
+                    </div>
+                    <div class="stat-divider"></div>
+                    <div class="stat-card">
+                        <span class="stat-number">5</span>
+                        <span class="stat-label">Métodos</span>
+                    </div>
+                    <div class="stat-divider"></div>
+                    <div class="stat-card">
+                        <span class="stat-number">~95%</span>
+                        <span class="stat-label">Precisión</span>
+                    </div>
+                    <div class="stat-divider"></div>
+                    <div class="stat-card">
+                        <span class="stat-number">∞</span>
+                        <span class="stat-label">Gratis</span>
+                    </div>
+                </div>
+            </div>
+            <div class="hero-wave">
+                <svg viewBox="0 0 1440 80" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M0,40 C360,80 1080,0 1440,40 L1440,80 L0,80 Z" fill="#0f172a"/>
+                </svg>
+            </div>
+        </section>
+
+        <script>
+        (function(){
+            const canvas = document.getElementById('heroCanvas');
+            const ctx = canvas.getContext('2d');
+            const symbols = ['∫','∂','∑','π','√','∞','dx','dy','∇','Δ','α','β','θ','λ','∮'];
+            let particles = [];
+
+            function resize(){
+                canvas.width = canvas.offsetWidth;
+                canvas.height = canvas.offsetHeight;
+            }
+
+            function init(){
+                resize();
+                particles = Array.from({length: 28}, () => ({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    s: symbols[Math.floor(Math.random() * symbols.length)],
+                    size: 12 + Math.random() * 18,
+                    speed: 0.15 + Math.random() * 0.3,
+                    opacity: 0.04 + Math.random() * 0.1,
+                    drift: (Math.random() - 0.5) * 0.3
+                }));
+            }
+
+            function draw(){
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                particles.forEach(p => {
+                    ctx.save();
+                    ctx.globalAlpha = p.opacity;
+                    ctx.fillStyle = '#818cf8';
+                    ctx.font = `${p.size}px 'Segoe UI', sans-serif`;
+                    ctx.fillText(p.s, p.x, p.y);
+                    ctx.restore();
+                    p.y -= p.speed;
+                    p.x += p.drift;
+                    if (p.y < -30) { p.y = canvas.height + 20; p.x = Math.random() * canvas.width; }
+                    if (p.x < -30 || p.x > canvas.width + 30) p.x = Math.random() * canvas.width;
+                });
+                requestAnimationFrame(draw);
+            }
+
+            window.addEventListener('resize', init);
+            init();
+            draw();
+        })();
+        </script>
+
+        <!-- CONTAINER -->
+        <div class="container">
+            <!-- INPUT SECTION -->
+            <section class="input-section">
+                <div class="section-header">
+                    <h2>Ingresa tu expresión</h2>
+                    <p>Escribe la función que deseas integrar</p>
+                </div>
+
+                <!-- MATH EDITOR -->
+                <div class="editor-wrapper">
+                    <label class="editor-label">Expresión matemática</label>
+                    <div id="math-input" class="mathbox"></div>
+                    <div class="editor-hint">
+                        <i class="fas fa-lightbulb"></i>
+                        Usa el teclado de atajos o escribe directamente
+                    </div>
+                </div>
+
+                <!-- LIMITS -->
+                <div class="limits-wrapper">
+                    <div class="limit-group">
+                        <label class="limit-label">
+                            <i class="fas fa-arrow-down"></i>
+                            Límite inferior
+                        </label>
+                        <input id="limiteA" type="number" step="any" placeholder="ej: 0" class="limit-input">
+                    </div>
+                    <div class="limit-group">
+                        <label class="limit-label">
+                            <i class="fas fa-arrow-up"></i>
+                            Límite superior
+                        </label>
+                        <input id="limiteB" type="number" step="any" placeholder="ej: π" class="limit-input">
+                    </div>
+                </div>
+
+                <!-- BUTTONS -->
+                <div class="button-group">
+                    <button class="btn btn-primary" onclick="resolver()">
+                        <i class="fas fa-play"></i>
+                        <span>Resolver</span>
+                    </button>
+                    <button class="btn btn-secondary" onclick="limpiar()">
+                        <i class="fas fa-trash"></i>
+                        <span>Limpiar</span>
+                    </button>
+                </div>
+
+                <!-- KEYBOARD -->
+                <div class="keyboard-wrapper">
+                    <div class="keyboard-header">
+                        <i class="fas fa-keyboard"></i>
+                        Atajos rápidos
+                    </div>
+                    <div class="keyboard-grid">
+                        <button class="key" onclick="insert('x')" title="Variable">x</button>
+                        <button class="key" onclick="insert('^2')" title="Cuadrado">x²</button>
+                        <button class="key" onclick="insert('^3')" title="Cubo">x³</button>
+                        <button class="key" onclick="insert('+')" title="Suma">+</button>
+                        <button class="key" onclick="insert('-')" title="Resta">−</button>
+                        <button class="key" onclick="insert('*')" title="Multiplicación">×</button>
+                        <button class="key" onclick="insert('/')" title="División">/</button>
+                        <button class="key" onclick="insert('\\\\sqrt{}')" title="Raíz">√</button>
+                        <button class="key" onclick="insert('\\\\frac{}{}')" title="Fracción">a/b</button>
+                        <button class="key" onclick="insert('\\\\sin')" title="Seno">sin</button>
+                        <button class="key" onclick="insert('\\\\cos')" title="Coseno">cos</button>
+                        <button class="key" onclick="insert('\\\\tan')" title="Tangente">tan</button>
+                        <button class="key" onclick="insert('\\\\exp')" title="Exponencial">eˣ</button>
+                        <button class="key" onclick="insert('\\\\log')" title="Logaritmo">log</button>
+                        <button class="key" onclick="insert('\\\\pi')" title="Pi">π</button>
+                        <button class="key" onclick="insert('(')" title="Paréntesis">()</button>
+                    </div>
+                </div>
+
+                <!-- EXAMPLES -->
+                <div class="examples-wrapper">
+                    <div class="examples-header">
+                        <i class="fas fa-book"></i>
+                        Ejemplos
+                    </div>
+                    <div class="examples-grid">
+                        <button class="example-btn" onclick="setExample('2x')">2x</button>
+                        <button class="example-btn" onclick="setExample('x**2')">x²</button>
+                        <button class="example-btn" onclick="setExample('sin(x)')">sin(x)</button>
+                        <button class="example-btn" onclick="setExample('exp(x)')">eˣ</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- RESULTS SECTION -->
+            <section class="results-section">
+                <!-- RESULT CARD -->
+                <div id="resultado-card" class="result-card hidden">
+                    <div class="card-header">
+                        <div class="card-title">
+                            <i class="fas fa-check-circle"></i>
+                            Resultado
+                        </div>
+                        <button class="card-close" onclick="ocultarResultado()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="card-content">
+                        <div id="resultado"></div>
+                    </div>
+                </div>
+
+                <!-- GRAPH CARD -->
+                <div id="grafica-card" class="result-card hidden">
+                    <div class="card-header">
+                        <div class="card-title">
+                            <i class="fas fa-chart-line"></i>
+                            Gráfica
+                        </div>
+                        <button class="card-close" onclick="ocultarGrafica()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="card-content">
+                        <div class="graph-container">
+                            <div id="grafica" class="grafica"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STEPS CARD -->
+                <div id="pasos-card" class="result-card hidden">
+                    <div class="card-header">
+                        <div class="card-title">
+                            <i class="fas fa-list-ol"></i>
+                            Pasos de la solución
+                        </div>
+                        <button class="card-close" onclick="ocultarPasos()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="card-content">
+                        <div id="pasos" class="steps-container"></div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- ═══════════════ MODALES ═══════════════ -->
+
+    <!-- MODAL PERFIL -->
+    <div class="modal-backdrop" id="modal-perfil">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title"><i class="fas fa-user"></i> Mi Perfil</div>
+                <button class="modal-close" onclick="closeModal('modal-perfil')"><i class="fas fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="profile-hero">
+                    <div class="profile-avatar-lg">C</div>
+                    <div class="profile-info">
+                        <h2 class="profile-name">Carlos</h2>
+                        <span class="profile-badge"><i class="fas fa-graduation-cap"></i> Estudiante</span>
+                        <p class="profile-email"><i class="fas fa-envelope"></i> carlos@carlostech.ai</p>
+                    </div>
+                </div>
+                <div class="profile-stats-grid">
+                    <div class="pstat">
+                        <span class="pstat-val" id="stat-total">0</span>
+                        <span class="pstat-lbl">Integrales resueltas</span>
+                    </div>
+                    <div class="pstat">
+                        <span class="pstat-val" id="stat-session">0</span>
+                        <span class="pstat-lbl">Esta sesión</span>
+                    </div>
+                    <div class="pstat">
+                        <span class="pstat-val" id="stat-method">—</span>
+                        <span class="pstat-lbl">Método favorito</span>
+                    </div>
+                    <div class="pstat">
+                        <span class="pstat-val" id="stat-streak">0</span>
+                        <span class="pstat-lbl">Días activo</span>
+                    </div>
+                </div>
+                <div class="profile-section-title">Información de cuenta</div>
+                <div class="profile-fields">
+                    <div class="pfield">
+                        <label>Usuario</label>
+                        <div class="pfield-val">carlos</div>
+                    </div>
+                    <div class="pfield">
+                        <label>Plan</label>
+                        <div class="pfield-val"><span class="plan-badge">Free</span></div>
+                    </div>
+                    <div class="pfield">
+                        <label>Miembro desde</label>
+                        <div class="pfield-val" id="member-since">—</div>
+                    </div>
+                    <div class="pfield">
+                        <label>Última actividad</label>
+                        <div class="pfield-val" id="last-active">Ahora</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL HISTORIAL -->
+    <div class="modal-backdrop" id="modal-historial">
+        <div class="modal modal-wide">
+            <div class="modal-header">
+                <div class="modal-title"><i class="fas fa-clock-rotate-left"></i> Historial</div>
+                <div class="modal-header-actions">
+                    <button class="modal-action-btn" onclick="clearHistory()" title="Limpiar historial">
+                        <i class="fas fa-trash"></i> Limpiar
+                    </button>
+                    <button class="modal-close" onclick="closeModal('modal-historial')"><i class="fas fa-xmark"></i></button>
+                </div>
+            </div>
+            <div class="modal-body">
+                <div id="historial-list" class="historial-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL CONFIGURACION -->
+    <div class="modal-backdrop" id="modal-config">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title"><i class="fas fa-gear"></i> Configuración</div>
+                <button class="modal-close" onclick="closeModal('modal-config')"><i class="fas fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+
+                <div class="config-section">
+                    <div class="config-section-title"><i class="fas fa-palette"></i> Apariencia</div>
+                    <div class="config-row">
+                        <div class="config-info">
+                            <span class="config-label">Tema de gráficas</span>
+                            <span class="config-desc">Color de la línea principal</span>
+                        </div>
+                        <select class="config-select" id="cfg-color" onchange="saveConfig()">
+                            <option value="#3b82f6">Azul</option>
+                            <option value="#8b5cf6">Púrpura</option>
+                            <option value="#22c55e">Verde</option>
+                            <option value="#f59e0b">Amarillo</option>
+                            <option value="#ec4899">Rosa</option>
+                        </select>
+                    </div>
+                    <div class="config-row">
+                        <div class="config-info">
+                            <span class="config-label">Animaciones</span>
+                            <span class="config-desc">Efectos visuales en los pasos</span>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="cfg-anim" checked onchange="saveConfig()">
+                            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="config-section">
+                    <div class="config-section-title"><i class="fas fa-calculator"></i> Cálculo</div>
+                    <div class="config-row">
+                        <div class="config-info">
+                            <span class="config-label">Mostrar verificación</span>
+                            <span class="config-desc">Derivar el resultado para comprobar</span>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="cfg-verify" checked onchange="saveConfig()">
+                            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                        </label>
+                    </div>
+                    <div class="config-row">
+                        <div class="config-info">
+                            <span class="config-label">Guardar historial</span>
+                            <span class="config-desc">Recordar integrales resueltas</span>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="cfg-history" checked onchange="saveConfig()">
+                            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                        </label>
+                    </div>
+                    <div class="config-row">
+                        <div class="config-info">
+                            <span class="config-label">Gráfica automática</span>
+                            <span class="config-desc">Graficar al resolver</span>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="cfg-autograph" checked onchange="saveConfig()">
+                            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="config-section">
+                    <div class="config-section-title"><i class="fas fa-bell"></i> Notificaciones</div>
+                    <div class="config-row">
+                        <div class="config-info">
+                            <span class="config-label">Consejos matemáticos</span>
+                            <span class="config-desc">Mostrar tips al resolver</span>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="cfg-tips" onchange="saveConfig()">
+                            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                        </label>
+                    </div>
+                </div>
+
+                <button class="config-reset" onclick="resetConfig()">
+                    <i class="fas fa-rotate-left"></i> Restaurar valores por defecto
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- FOOTER -->
+    <footer class="footer">
+        <div class="footer-content">
+            <p>&copy; 2025 CarlosTech Math AI. Todos los derechos reservados.</p>
+            <div class="footer-links">
+                <a href="#">Privacidad</a>
+                <a href="#">Términos</a>
+                <a href="#">Contacto</a>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // VARIABLES
+        var MQ = MathQuill.getInterface(2);
+        var mathField = MQ.MathField(document.getElementById('math-input'));
+
+        // ═══════════════════════════════════════════
+        // STORAGE
+        // ═══════════════════════════════════════════
+        const STORAGE_KEY = 'carlostech_data';
+        let sessionCount = 0;
+
+        function getData() {
+            try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || { history: [], total: 0, methods: {}, since: new Date().toISOString() }; }
+            catch { return { history: [], total: 0, methods: {}, since: new Date().toISOString() }; }
+        }
+
+        function saveData(d) { localStorage.setItem(STORAGE_KEY, JSON.stringify(d)); }
+
+        function addToHistory(expr, result, method, time) {
+            const cfg = loadConfig();
+            if (!cfg.history) return;
+            const d = getData();
+            d.total = (d.total || 0) + 1;
+            d.methods = d.methods || {};
+            d.methods[method] = (d.methods[method] || 0) + 1;
+            d.history = d.history || [];
+            d.history.unshift({ expr, result, method, time, date: new Date().toISOString() });
+            if (d.history.length > 50) d.history = d.history.slice(0, 50);
+            saveData(d);
+            sessionCount++;
+        }
+
+        function getFavoriteMethod() {
+            const d = getData();
+            if (!d.methods || !Object.keys(d.methods).length) return '—';
+            return Object.entries(d.methods).sort((a,b) => b[1]-a[1])[0][0].split(' ')[0];
+        }
+
+        function getDaysActive() {
+            const d = getData();
+            if (!d.since) return 1;
+            const diff = Math.floor((Date.now() - new Date(d.since)) / 86400000);
+            return Math.max(1, diff);
+        }
+
+        // ═══════════════════════════════════════════
+        // CONFIG
+        // ═══════════════════════════════════════════
+        const CFG_KEY = 'carlostech_cfg';
+        const CFG_DEFAULT = { color: '#3b82f6', anim: true, verify: true, history: true, autograph: true, tips: false };
+
+        function loadConfig() {
+            try { return Object.assign({}, CFG_DEFAULT, JSON.parse(localStorage.getItem(CFG_KEY))); }
+            catch { return { ...CFG_DEFAULT }; }
+        }
+
+        function saveConfig() {
+            const cfg = {
+                color:     document.getElementById('cfg-color').value,
+                anim:      document.getElementById('cfg-anim').checked,
+                verify:    document.getElementById('cfg-verify').checked,
+                history:   document.getElementById('cfg-history').checked,
+                autograph: document.getElementById('cfg-autograph').checked,
+                tips:      document.getElementById('cfg-tips').checked,
+            };
+            localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
+            showToast('Configuración guardada');
+        }
+
+        function resetConfig() {
+            localStorage.removeItem(CFG_KEY);
+            applyConfigToUI(CFG_DEFAULT);
+            showToast('Valores restaurados');
+        }
+
+        function applyConfigToUI(cfg) {
+            document.getElementById('cfg-color').value     = cfg.color;
+            document.getElementById('cfg-anim').checked    = cfg.anim;
+            document.getElementById('cfg-verify').checked  = cfg.verify;
+            document.getElementById('cfg-history').checked = cfg.history;
+            document.getElementById('cfg-autograph').checked = cfg.autograph;
+            document.getElementById('cfg-tips').checked    = cfg.tips;
+        }
+
+        // ═══════════════════════════════════════════
+        // MODALES
+        // ═══════════════════════════════════════════
+        function openModal(id) {
+            document.getElementById('navUser').classList.remove('open');
+            if (id === 'modal-perfil')   renderPerfil();
+            if (id === 'modal-historial') renderHistorial();
+            if (id === 'modal-config')   applyConfigToUI(loadConfig());
+            const m = document.getElementById(id);
+            m.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        // Cerrar con Escape o click en backdrop
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') document.querySelectorAll('.modal-backdrop.active').forEach(m => { m.classList.remove('active'); document.body.style.overflow = ''; }); });
+        document.querySelectorAll('.modal-backdrop').forEach(b => b.addEventListener('click', function(e) { if (e.target === this) { this.classList.remove('active'); document.body.style.overflow = ''; } }));
+
+        // ═══════════════════════════════════════════
+        // RENDER PERFIL
+        // ═══════════════════════════════════════════
+        function renderPerfil() {
+            const d = getData();
+            document.getElementById('stat-total').textContent   = d.total || 0;
+            document.getElementById('stat-session').textContent = sessionCount;
+            document.getElementById('stat-method').textContent  = getFavoriteMethod();
+            document.getElementById('stat-streak').textContent  = getDaysActive();
+            const since = d.since ? new Date(d.since).toLocaleDateString('es-ES', { day:'2-digit', month:'short', year:'numeric' }) : 'Hoy';
+            document.getElementById('member-since').textContent = since;
+            document.getElementById('last-active').textContent  = 'Ahora mismo';
+        }
+
+        // ═══════════════════════════════════════════
+        // RENDER HISTORIAL
+        // ═══════════════════════════════════════════
+        function renderHistorial() {
+            const d = getData();
+            const list = document.getElementById('historial-list');
+            if (!d.history || d.history.length === 0) {
+                list.innerHTML = `
+                    <div class="historial-empty">
+                        <i class="fas fa-clock-rotate-left"></i>
+                        <p>No hay integrales en el historial</p>
+                        <span>Resuelve una integral para verla aquí</span>
+                    </div>`;
+                return;
+            }
+            list.innerHTML = d.history.map((item, i) => `
+                <div class="historial-item" onclick="loadFromHistory('${item.expr.replace(/'/g,"\\'")}')"
+                     style="animation-delay:${i*0.04}s">
+                    <div class="hi-left">
+                        <div class="hi-icon"><i class="fas fa-square-root-variable"></i></div>
+                        <div class="hi-body">
+                            <div class="hi-expr">\\(\\displaystyle ${item.expr}\\)</div>
+                            <div class="hi-result">\\(= ${item.result}\\)</div>
+                        </div>
+                    </div>
+                    <div class="hi-right">
+                        <span class="hi-method">${item.method.split(' ')[0]}</span>
+                        <span class="hi-time">${item.time}</span>
+                        <span class="hi-date">${new Date(item.date).toLocaleDateString('es-ES',{day:'2-digit',month:'short'})}</span>
+                    </div>
+                </div>`).join('');
+            MathJax.typeset();
+        }
+
+        function loadFromHistory(expr) {
+            closeModal('modal-historial');
+            mathField.latex(expr);
+            document.querySelector('.input-section').scrollIntoView({ behavior: 'smooth' });
+            setTimeout(() => resolver(), 400);
+        }
+
+        function clearHistory() {
+            if (!confirm('\u00bfEliminar todo el historial?')) return;
+            const d = getData();
+            d.history = [];
+            saveData(d);
+            renderHistorial();
+            showToast('Historial eliminado');
+        }
+
+        // ═══════════════════════════════════════════
+        // TOAST
+        // ═══════════════════════════════════════════
+        function showToast(msg, type='success') {
+            const t = document.createElement('div');
+            t.className = `toast toast-${type}`;
+            t.innerHTML = `<i class="fas fa-${type==='success'?'circle-check':'circle-exclamation'}"></i> ${msg}`;
+            document.body.appendChild(t);
+            requestAnimationFrame(() => t.classList.add('show'));
+            setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 300); }, 2500);
+        }
+        document.getElementById('menuToggle').addEventListener('click', function() {
+            document.getElementById('sidebar').classList.add('active');
+            document.getElementById('overlay').classList.add('active');
+            this.classList.add('open');
+        });
+
+        document.getElementById('closeSidebar').addEventListener('click', function() {
+            document.getElementById('sidebar').classList.remove('active');
+            document.getElementById('overlay').classList.remove('active');
+            document.getElementById('menuToggle').classList.remove('open');
+        });
+
+        document.getElementById('overlay').addEventListener('click', function() {
+            document.getElementById('sidebar').classList.remove('active');
+            this.classList.remove('active');
+            document.getElementById('menuToggle').classList.remove('open');
+        });
+
+        // USER DROPDOWN
+        document.getElementById('navUser').addEventListener('click', function(e) {
+            e.stopPropagation();
+            this.classList.toggle('open');
+        });
+        document.addEventListener('click', function() {
+            document.getElementById('navUser').classList.remove('open');
+        });
+
+        // NAVBAR SCROLL EFFECT
+        window.addEventListener('scroll', function() {
+            document.getElementById('navbar').classList.toggle('scrolled', window.scrollY > 20);
+        });
+
+        // SCROLL TO SECTION
+        function scrollToSection(e, selector) {
+            e.preventDefault();
+            const el = document.querySelector(selector);
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            // close drawer if open
+            document.getElementById('sidebar').classList.remove('active');
+            document.getElementById('overlay').classList.remove('active');
+            document.getElementById('menuToggle').classList.remove('open');
+        }
+
+        // FUNCIONES
+        function insert(val) {
+            mathField.write(val);
+            mathField.focus();
+        }
+
+        function setExample(expr) {
+            mathField.latex(expr);
+            mathField.focus();
+        }
+
+        function limpiar() {
+            mathField.latex('');
+            document.getElementById('limiteA').value = '';
+            document.getElementById('limiteB').value = '';
+            document.getElementById('resultado-card').classList.add('hidden');
+            document.getElementById('grafica-card').classList.add('hidden');
+            document.getElementById('pasos-card').classList.add('hidden');
+        }
+
+        function ocultarResultado() {
+            document.getElementById('resultado-card').classList.add('hidden');
+        }
+
+        function ocultarGrafica() {
+            document.getElementById('grafica-card').classList.add('hidden');
+        }
+
+        function ocultarPasos() {
+            document.getElementById('pasos-card').classList.add('hidden');
+        }
+
+        function resolver() {
+            let latex = mathField.latex();
+
+            if (!latex || latex.trim() === '') {
+                alert('Por favor ingresa una expresión');
+                return;
+            }
+
+            let a = document.getElementById('limiteA').value || null;
+            let b = document.getElementById('limiteB').value || null;
+
+            // Mostrar loading
+            document.getElementById('resultado-card').classList.remove('hidden');
+            document.getElementById('resultado').innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p class="loading-text">Resolviendo...</p>
+                </div>
+            `;
+            document.getElementById('grafica-card').classList.add('hidden');
+            document.getElementById('pasos-card').classList.add('hidden');
+
+            fetch('/api/resolver', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ integral: latex, a: a, b: b })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (!data.success) {
+                    document.getElementById('resultado').innerHTML = `
+                        <div class="error-box">
+                            <i class="fas fa-exclamation-circle"></i>
+                            <div>
+                                <strong>Error</strong>
+                                <p>${data.error || 'Error desconocido'}</p>
+                            </div>
+                        </div>
+                    `;
+                    return;
+                }
+
+                // Mostrar resultado
+                document.getElementById('resultado').innerHTML = `
+                    <div class="result-box">
+                        <div class="result-label">Resultado</div>
+                        <div class="result-value">$$${data.result}$$</div>
+                        <div class="result-meta">
+                            <span class="meta-item">
+                                <i class="fas fa-cog"></i>
+                                ${data.method_detected || 'General'}
+                            </span>
+                            <span class="meta-item">
+                                <i class="fas fa-clock"></i>
+                                ${data.computation_time}
+                            </span>
+                        </div>
+                    </div>
+                `;
+
+                // Graficar
+                const cfg = loadConfig();
+                if (cfg.autograph) graficarFuncion(latex, a, b);
+
+                // Historial
+                addToHistory(data.input, data.result, data.method_detected || 'General', data.computation_time);
+
+                // Mostrar pasos
+                if (data.steps && data.steps.length > 0) {
+                    mostrarPasos(data.steps, data.method_detected, data.input, data.result);
+                }
+
+                MathJax.typeset();
+            })
+            .catch(err => {
+                console.error('Error:', err);
+                document.getElementById('resultado').innerHTML = `
+                    <div class="error-box">
+                        <i class="fas fa-exclamation-circle"></i>
+                        <div>
+                            <strong>Error</strong>
+                            <p>Error en la solicitud. Intenta nuevamente.</p>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function graficarFuncion(latex, a, b) {
+            fetch('/api/graficar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ integral: latex, a: a, b: b })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.error) {
+                    console.error('Error:', data.error);
+                    return;
+                }
+
+                document.getElementById('grafica-card').classList.remove('hidden');
+
+                let trace = {
+                    x: data.x,
+                    y: data.y,
+                    mode: 'lines',
+                    name: 'f(x)',
+                    line: { color: loadConfig().color || '#3b82f6', width: 3 },
+                    hovertemplate: '<b>x:</b> %{x:.4f}<br><b>f(x):</b> %{y:.4f}<extra></extra>'
+                };
+
+                let traces = [trace];
+
+                if (data.a !== null && data.b !== null && typeof data.a === 'number' && typeof data.b === 'number') {
+                    let a_val = data.a;
+                    let b_val = data.b;
+                    let x_fill = [];
+                    let y_fill = [];
+
+                    for (let i = 0; i < data.x.length; i++) {
+                        if (data.x[i] >= a_val && data.x[i] <= b_val && data.y[i] !== null && isFinite(data.y[i])) {
+                            x_fill.push(data.x[i]);
+                            y_fill.push(data.y[i]);
+                        }
+                    }
+
+                    if (x_fill.length > 0) {
+                        let fillTrace = {
+                            x: x_fill,
+                            y: y_fill,
+                            fill: 'tozeroy',
+                            fillcolor: 'rgba(59, 130, 246, 0.3)',
+                            line: { color: 'rgba(59, 130, 246, 0)' },
+                            showlegend: true,
+                            name: 'Área integral',
+                            hoverinfo: 'skip'
+                        };
+                        traces.push(fillTrace);
+                    }
+                }
+
+                let layout = {
+                    title: { text: 'Gráfica de la Función', font: { color: '#e0e7ff', size: 18 } },
+                    xaxis: {
+                        title: 'x',
+                        color: '#cbd5e1',
+                        gridcolor: 'rgba(226, 232, 240, 0.1)',
+                    },
+                    yaxis: {
+                        title: 'f(x)',
+                        color: '#cbd5e1',
+                        gridcolor: 'rgba(226, 232, 240, 0.1)',
+                    },
+                    plot_bgcolor: 'rgba(15, 23, 42, 0.6)',
+                    paper_bgcolor: 'rgba(30, 41, 59, 0.8)',
+                    font: { color: '#cbd5e1', family: "'Segoe UI', 'Roboto', sans-serif" },
+                    hovermode: 'closest',
+                    margin: { t: 50, l: 70, r: 50, b: 70 }
+                };
+
+                Plotly.newPlot('grafica', traces, layout, { responsive: true, displayModeBar: true });
+            })
+            .catch(err => console.error('Error graficando:', err));
+        }
+
+        function mostrarPasos(steps, method, inputExpr, resultExpr) {
+            document.getElementById('pasos-card').classList.remove('hidden');
+
+            const icons = {
+                identify: 'fa-magnifying-glass',
+                method:   'fa-lightbulb',
+                calc:     'fa-calculator',
+                verify:   'fa-shield-check',
+                result:   'fa-circle-check'
+            };
+            const labels = {
+                identify: 'Análisis',
+                method:   'Método',
+                calc:     'Cálculo',
+                verify:   'Verificación',
+                result:   'Resultado'
+            };
+
+            let calcCount = 0;
+            let html = `
+                <div class="steps-header">
+                    <div class="steps-problem">
+                        <span class="steps-label">Resolviendo</span>
+                        <span class="steps-expr">\\(\\displaystyle\\int ${inputExpr} \\, dx\\)</span>
+                    </div>
+                    <div class="steps-meta">
+                        <span class="steps-method-tag"><i class="fas fa-wand-magic-sparkles"></i> ${method || 'General'}</span>
+                        <span class="steps-count">${steps.length} pasos</span>
+                    </div>
+                </div>
+                <div class="steps-timeline">
+            `;
+
+            steps.forEach((step, i) => {
+                const t = step.type || 'calc';
+                if (t === 'calc') calcCount++;
+                const icon  = icons[t]  || 'fa-circle';
+                const label = labels[t] || 'Paso';
+                const isLast = i === steps.length - 1;
+
+                html += `
+                <div class="step-item step-${t}" style="animation-delay:${i*0.07}s">
+                    <div class="step-connector">
+                        <div class="step-dot"><i class="fas ${icon}"></i></div>
+                        ${!isLast ? '<div class="step-line"></div>' : ''}
+                    </div>
+                    <div class="step-body">
+                        <div class="step-head">
+                            <span class="step-badge step-badge-${t}">${label}</span>
+                            <span class="step-title">${step.title}</span>
+                        </div>
+                        ${step.text  ? `<p class="step-text">${step.text}</p>` : ''}
+                        ${step.math  ? `<div class="step-math">\\[${step.math}\\]</div>` : ''}
+                        ${step.note  ? `<div class="step-note"><i class="fas fa-circle-check"></i> ${step.note}</div>` : ''}
+                    </div>
+                </div>`;
+            });
+
+            html += `</div>`;
+            document.getElementById('pasos').innerHTML = html;
+            MathJax.typeset();
+        }
+    </script>
 
 </body>
 
