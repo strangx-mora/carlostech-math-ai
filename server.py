@@ -809,6 +809,11 @@ def login_required(f):
     return decorated
 
 
+@app.route("/googlef50b39a82150b4d8.html")
+def google_verify():
+    return app.response_class("google-site-verification: googlef50b39a82150b4d8.html", mimetype='text/html')
+
+
 @app.route("/sitemap.xml")
 def sitemap():
     base = "https://carlostech-math-ai.onrender.com"
