@@ -809,6 +809,38 @@ def login_required(f):
     return decorated
 
 
+@app.route("/sitemap.xml")
+def sitemap():
+    base = "https://carlostech-math-ai.onrender.com"
+    urls = [
+        {"loc": f"{base}/",         "priority": "1.0", "changefreq": "weekly"},
+        {"loc": f"{base}/login",    "priority": "0.8", "changefreq": "monthly"},
+        {"loc": f"{base}/register", "priority": "0.8", "changefreq": "monthly"},
+    ]
+    xml = '<?xml version="1.0" encoding="UTF-8"?>\n'
+    xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+    for u in urls:
+        xml += f'  <url><loc>{u["loc"]}</loc><changefreq>{u["changefreq"]}</changefreq><priority>{u["priority"]}</priority></url>\n'
+    xml += '</urlset>'
+    return app.response_class(xml, mimetype='application/xml')
+
+
+@app.route("/robots.txt")
+def robots():
+    txt = """User-agent: *
+Allow: /
+Allow: /login
+Allow: /register
+Disallow: /app
+Disallow: /admin
+Disallow: /api/
+Disallow: /s/
+
+Sitemap: https://carlostech-math-ai.onrender.com/sitemap.xml
+"""
+    return app.response_class(txt, mimetype='text/plain')
+
+
 @app.route("/")
 def landing():
     if 'user' in session:
