@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CarlosTech Math AI — Crear cuenta</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --blue:   #3b82f6;
+            --indigo: #6366f1;
+            --purple: #8b5cf6;
+            --green:  #22c55e;
+            --bg:     #080d1a;
+            --bg2:    #0f172a;
+            --text:   #f1f5f9;
+            --muted:  #64748b;
+            --border: rgba(148,163,184,0.1);
+        }
+
+        html, body { height: 100%; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .wrapper {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            min-height: 100vh;
+        }
+
+        /* ── PANEL IZQUIERDO ── */
+        .left-panel {
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 4rem 3.5rem;
+            background:
+                radial-gradient(ellipse 70% 60% at 15% 10%,  rgba(99,102,241,0.22) 0%, transparent 55%),
+                radial-gradient(ellipse 50% 50% at 85% 90%,  rgba(59,130,246,0.18) 0%, transparent 55%),
+                radial-gradient(ellipse 40% 40% at 50% 50%,  rgba(139,92,246,0.1)  0%, transparent 65%),
+                #080d1a;
+        }
+
+        #bgCanvas {
+            position: absolute;
+            inset: 0; width: 100%; height: 100%;
+            pointer-events: none;
+        }
+
+        .left-panel::after {
+            content: '';
+            position: absolute;
+            right: 0; top: 10%; bottom: 10%;
+            width: 1px;
+            background: linear-gradient(to bottom, transparent, rgba(99,102,241,0.5), transparent);
+        }
+
+        .left-content { position: relative; z-index: 1; max-width: 480px; width: 100%; }
+
+        .brand { display: flex; align-items: center; gap: 0.875rem; margin-bottom: 2.5rem; animation: fadeUp 0.7s ease both; }
+
+        .brand-icon {
+            width: 56px; height: 56px; border-radius: 1rem;
+            background: linear-gradient(135deg, var(--indigo), var(--purple));
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.75rem;
+            box-shadow: 0 8px 32px rgba(99,102,241,0.4);
+        }
+
+        .brand-name {
+            font-size: 1.6rem; font-weight: 900; letter-spacing: -0.03em;
+            background: linear-gradient(135deg, #e0e7ff, #a5b4fc);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+        }
+
+        .brand-tag { font-size: 0.7rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; }
+
+        .left-headline {
+            font-size: clamp(2rem, 3.5vw, 2.75rem); font-weight: 900;
+            line-height: 1.1; letter-spacing: -0.04em; margin-bottom: 1.25rem;
+            animation: fadeUp 0.7s 0.1s ease both;
+        }
+
+        .left-headline .hl {
+            background: linear-gradient(135deg, #60a5fa, #a78bfa, #f472b6);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+        }
+
+        .left-sub { font-size: 1rem; color: var(--muted); line-height: 1.7; margin-bottom: 2.75rem; animation: fadeUp 0.7s 0.2s ease both; }
+
+        .steps-list { display: flex; flex-direction: column; gap: 1rem; animation: fadeUp 0.7s 0.3s ease both; }
+
+        .step-row {
+            display: flex; align-items: center; gap: 1rem;
+            padding: 1rem 1.25rem;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 0.875rem;
+            backdrop-filter: blur(8px);
+            transition: all 0.25s;
+        }
+
+        .step-row:hover { background: rgba(99,102,241,0.08); border-color: rgba(99,102,241,0.25); transform: translateX(6px); }
+
+        .step-num {
+            width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.8rem; font-weight: 800;
+        }
+
+        .step-num.s1 { background: rgba(99,102,241,0.15); color: #818cf8; border: 1px solid rgba(99,102,241,0.3); }
+        .step-num.s2 { background: rgba(139,92,246,0.15); color: #a78bfa; border: 1px solid rgba(139,92,246,0.3); }
+        .step-num.s3 { background: rgba(34,197,94,0.15);  color: #4ade80; border: 1px solid rgba(34,197,94,0.3); }
+
+        .step-body { flex: 1; }
+        .step-title { font-size: 0.875rem; font-weight: 700; color: var(--text); margin-bottom: 0.15rem; }
+        .step-desc  { font-size: 0.775rem; color: var(--muted); }
+
+        /* ── PANEL DERECHO ── */
+        .right-panel {
+            display: flex; justify-content: center; align-items: center;
+            padding: 3rem 2.5rem;
+            background: var(--bg2);
+            position: relative;
+            overflow-y: auto;
+        }
+
+        .register-card { width: 100%; max-width: 440px; animation: fadeUp 0.6s 0.15s ease both; }
+
+        .card-top { text-align: center; margin-bottom: 2rem; }
+
+        .card-logo {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 52px; height: 52px; border-radius: 1rem;
+            background: linear-gradient(135deg, var(--indigo), var(--purple));
+            font-size: 1.5rem; margin-bottom: 1.25rem;
+            box-shadow: 0 8px 24px rgba(99,102,241,0.35);
+        }
+
+        .card-title { font-size: 1.6rem; font-weight: 800; letter-spacing: -0.03em; margin-bottom: 0.4rem; }
+        .card-subtitle { font-size: 0.875rem; color: var(--muted); }
+
+        .alert {
+            display: flex; align-items: center; gap: 0.75rem;
+            padding: 0.875rem 1rem; border-radius: 0.75rem;
+            font-size: 0.85rem; margin-bottom: 1.5rem;
+            animation: shake 0.45s ease;
+        }
+
+        .alert-error  { background: rgba(239,68,68,0.08);  border: 1px solid rgba(239,68,68,0.25);  color: #fca5a5; }
+        .alert-success{ background: rgba(34,197,94,0.08);  border: 1px solid rgba(34,197,94,0.25);  color: #86efac; animation: none; }
+
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.875rem; }
+
+        .form-field { margin-bottom: 1rem; }
+
+        .field-label {
+            display: block; font-size: 0.75rem; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 0.08em;
+            color: var(--muted); margin-bottom: 0.5rem;
+        }
+
+        .field-wrap { position: relative; }
+
+        .field-icon {
+            position: absolute; left: 1rem; top: 50%; transform: translateY(-50%);
+            color: var(--muted); font-size: 0.875rem; pointer-events: none; transition: color 0.2s;
+        }
+
+        .field-input {
+            width: 100%; padding: 0.875rem 1rem 0.875rem 2.75rem;
+            background: rgba(15,23,42,0.8); border: 1.5px solid var(--border);
+            border-radius: 0.75rem; color: var(--text); font-size: 0.95rem;
+            transition: all 0.25s; outline: none;
+        }
+
+        .field-input::placeholder { color: rgba(100,116,139,0.6); }
+
+        .field-input:focus {
+            border-color: var(--indigo);
+            background: rgba(99,102,241,0.05);
+            box-shadow: 0 0 0 3px rgba(99,102,241,0.12);
+        }
+
+        .field-wrap:focus-within .field-icon { color: #818cf8; }
+
+        .toggle-pw {
+            position: absolute; right: 1rem; top: 50%; transform: translateY(-50%);
+            background: none; border: none; color: var(--muted);
+            cursor: pointer; font-size: 0.875rem; padding: 0.25rem; transition: color 0.2s;
+        }
+        .toggle-pw:hover { color: var(--text); }
+
+        /* Password strength */
+        .pw-strength { margin-top: 0.5rem; }
+
+        .pw-bars { display: flex; gap: 3px; margin-bottom: 0.3rem; }
+
+        .pw-bar {
+            flex: 1; height: 3px; border-radius: 2px;
+            background: rgba(255,255,255,0.08);
+            transition: background 0.3s;
+        }
+
+        .pw-bar.active-weak   { background: #ef4444; }
+        .pw-bar.active-medium { background: #f59e0b; }
+        .pw-bar.active-strong { background: #22c55e; }
+
+        .pw-label { font-size: 0.7rem; color: var(--muted); }
+
+        /* Terms */
+        .terms-row {
+            display: flex; align-items: flex-start; gap: 0.625rem;
+            margin-bottom: 1.5rem; font-size: 0.82rem; color: var(--muted);
+        }
+
+        .terms-row input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--indigo); margin-top: 2px; cursor: pointer; flex-shrink: 0; }
+        .terms-row a { color: #818cf8; text-decoration: none; font-weight: 600; }
+        .terms-row a:hover { color: #a5b4fc; }
+
+        .submit-btn {
+            width: 100%; padding: 0.9rem; border: none; border-radius: 0.875rem;
+            background: linear-gradient(135deg, var(--indigo), var(--purple));
+            color: white; font-size: 0.95rem; font-weight: 700;
+            cursor: pointer; transition: all 0.25s;
+            box-shadow: 0 4px 20px rgba(99,102,241,0.4);
+            position: relative; overflow: hidden; margin-bottom: 1.5rem;
+        }
+
+        .submit-btn::before {
+            content: ''; position: absolute; inset: 0;
+            background: linear-gradient(135deg, rgba(255,255,255,0.1), transparent);
+            opacity: 0; transition: opacity 0.25s;
+        }
+
+        .submit-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(99,102,241,0.55); }
+        .submit-btn:hover::before { opacity: 1; }
+        .submit-btn:active { transform: translateY(0); }
+        .submit-btn:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+
+        .btn-inner { display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
+
+        .card-footer { text-align: center; font-size: 0.8rem; color: var(--muted); }
+        .card-footer a { color: #818cf8; text-decoration: none; font-weight: 600; }
+        .card-footer a:hover { color: #a5b4fc; }
+
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(18px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes shake {
+            0%,100% { transform: translateX(0); }
+            20%,60%  { transform: translateX(-5px); }
+            40%,80%  { transform: translateX(5px); }
+        }
+
+        @media (max-width: 900px) {
+            .wrapper { grid-template-columns: 1fr; }
+            .left-panel { padding: 3rem 2rem 2.5rem; min-height: auto; }
+            .left-panel::after { display: none; }
+        }
+
+        @media (max-width: 480px) {
+            .right-panel { padding: 2rem 1.25rem; }
+            .left-panel  { padding: 2.5rem 1.25rem; }
+            .form-row    { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="wrapper">
+
+    <!-- ══ PANEL IZQUIERDO ══ -->
+    <div class="left-panel">
+        <canvas id="bgCanvas"></canvas>
+        <div class="left-content">
+
+            <div class="brand">
+                <div class="brand-icon">∫</div>
+                <div>
+                    <div class="brand-name">CarlosTech</div>
+                    <div class="brand-tag">Math AI · v5.0</div>
+                </div>
+            </div>
+
+            <h1 class="left-headline">
+                Únete y empieza<br>
+                a resolver <span class="hl">integrales</span><br>
+                gratis
+            </h1>
+            <p class="left-sub">
+                Crea tu cuenta en segundos y accede al motor matemático más potente — sin límites, sin tarjeta.
+            </p>
+
+            <div class="steps-list">
+                <div class="step-row">
+                    <div class="step-num s1">1</div>
+                    <div class="step-body">
+                        <div class="step-title">Crea tu cuenta</div>
+                        <div class="step-desc">Solo usuario, email y contraseña</div>
+                    </div>
+                </div>
+                <div class="step-row">
+                    <div class="step-num s2">2</div>
+                    <div class="step-body">
+                        <div class="step-title">Inicia sesión</div>
+                        <div class="step-desc">Accede con tus credenciales</div>
+                    </div>
+                </div>
+                <div class="step-row">
+                    <div class="step-num s3">3</div>
+                    <div class="step-body">
+                        <div class="step-title">Resuelve integrales</div>
+                        <div class="step-desc">Historial, gráficas y pasos detallados</div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ══ PANEL DERECHO ══ -->
+    <div class="right-panel">
+        <div class="register-card">
+
+            <div class="card-top">
+                <div class="card-logo">∫</div>
+                <h2 class="card-title">Crear cuenta</h2>
+                <p class="card-subtitle">Completa el formulario para registrarte</p>
+            </div>
+
+            {% if error %}
+            <div class="alert alert-error">
+                <i class="fas fa-circle-exclamation"></i>
+                <span>{{ error }}</span>
+            </div>
+            {% endif %}
+
+            <form method="POST" id="registerForm" autocomplete="off" novalidate>
+
+                <div class="form-row">
+                    <div class="form-field">
+                        <label class="field-label" for="username">Usuario</label>
+                        <div class="field-wrap">
+                            <input class="field-input" type="text" id="username" name="username"
+                                placeholder="ej: carlos" minlength="3" required
+                                value="{{ request.form.get('username', '') }}">
+                            <i class="fas fa-user field-icon"></i>
+                        </div>
+                    </div>
+                    <div class="form-field">
+                        <label class="field-label" for="email">Email</label>
+                        <div class="field-wrap">
+                            <input class="field-input" type="email" id="email" name="email"
+                                placeholder="tu@email.com" required
+                                value="{{ request.form.get('email', '') }}">
+                            <i class="fas fa-envelope field-icon"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-field">
+                    <label class="field-label" for="password">Contraseña</label>
+                    <div class="field-wrap">
+                        <input class="field-input" type="password" id="password" name="password"
+                            placeholder="Mínimo 6 caracteres" minlength="6" required
+                            oninput="checkStrength(this.value)">
+                        <i class="fas fa-lock field-icon"></i>
+                        <button type="button" class="toggle-pw" onclick="togglePw('password','eye1')" tabindex="-1">
+                            <i class="fas fa-eye" id="eye1"></i>
+                        </button>
+                    </div>
+                    <div class="pw-strength">
+                        <div class="pw-bars">
+                            <div class="pw-bar" id="bar1"></div>
+                            <div class="pw-bar" id="bar2"></div>
+                            <div class="pw-bar" id="bar3"></div>
+                            <div class="pw-bar" id="bar4"></div>
+                        </div>
+                        <span class="pw-label" id="pw-label">Ingresa una contraseña</span>
+                    </div>
+                </div>
+
+                <div class="form-field">
+                    <label class="field-label" for="confirm">Confirmar contraseña</label>
+                    <div class="field-wrap">
+                        <input class="field-input" type="password" id="confirm" name="confirm"
+                            placeholder="Repite tu contraseña" required>
+                        <i class="fas fa-lock-open field-icon"></i>
+                        <button type="button" class="toggle-pw" onclick="togglePw('confirm','eye2')" tabindex="-1">
+                            <i class="fas fa-eye" id="eye2"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="terms-row">
+                    <input type="checkbox" id="terms" required>
+                    <label for="terms">
+                        Acepto los <a href="#">Términos de uso</a> y la <a href="#">Política de privacidad</a>
+                    </label>
+                </div>
+
+                <button type="submit" class="submit-btn" id="submitBtn">
+                    <span class="btn-inner" id="btnInner">
+                        <i class="fas fa-user-plus"></i>
+                        Crear cuenta
+                    </span>
+                </button>
+
+            </form>
+
+            <div class="card-footer">
+                ¿Ya tienes cuenta? <a href="/">Inicia sesión</a>
+            </div>
+
+        </div>
+    </div>
+
+</div>
+
+<script>
+    /* Partículas */
+    (function () {
+        const canvas = document.getElementById('bgCanvas');
+        const ctx    = canvas.getContext('2d');
+        const syms   = ['∫','∂','∑','π','√','∞','dx','dy','∇','Δ','α','β','θ','λ','∮','≈','±'];
+        let pts = [];
+
+        function resize() { canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight; }
+
+        function init() {
+            resize();
+            pts = Array.from({ length: 32 }, () => ({
+                x: Math.random() * canvas.width, y: Math.random() * canvas.height,
+                s: syms[Math.floor(Math.random() * syms.length)],
+                size: 11 + Math.random() * 16, speed: 0.12 + Math.random() * 0.28,
+                op: 0.04 + Math.random() * 0.09, drift: (Math.random() - 0.5) * 0.25,
+            }));
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            pts.forEach(p => {
+                ctx.save(); ctx.globalAlpha = p.op; ctx.fillStyle = '#818cf8';
+                ctx.font = `${p.size}px 'Segoe UI', sans-serif`;
+                ctx.fillText(p.s, p.x, p.y); ctx.restore();
+                p.y -= p.speed; p.x += p.drift;
+                if (p.y < -30) { p.y = canvas.height + 20; p.x = Math.random() * canvas.width; }
+                if (p.x < -30 || p.x > canvas.width + 30) p.x = Math.random() * canvas.width;
+            });
+            requestAnimationFrame(draw);
+        }
+
+        window.addEventListener('resize', init);
+        init(); draw();
+    })();
+
+    /* Toggle password */
+    function togglePw(inputId, iconId) {
+        const inp  = document.getElementById(inputId);
+        const icon = document.getElementById(iconId);
+        inp.type       = inp.type === 'password' ? 'text' : 'password';
+        icon.className = inp.type === 'password' ? 'fas fa-eye' : 'fas fa-eye-slash';
+    }
+
+    /* Password strength */
+    function checkStrength(val) {
+        const bars  = [document.getElementById('bar1'), document.getElementById('bar2'),
+                       document.getElementById('bar3'), document.getElementById('bar4')];
+        const label = document.getElementById('pw-label');
+        bars.forEach(b => { b.className = 'pw-bar'; });
+
+        if (!val) { label.textContent = 'Ingresa una contraseña'; label.style.color = ''; return; }
+
+        let score = 0;
+        if (val.length >= 6)  score++;
+        if (val.length >= 10) score++;
+        if (/[A-Z]/.test(val) && /[0-9]/.test(val)) score++;
+        if (/[^A-Za-z0-9]/.test(val)) score++;
+
+        const levels = [
+            { cls: 'active-weak',   text: 'Muy débil',  color: '#ef4444' },
+            { cls: 'active-weak',   text: 'Débil',      color: '#ef4444' },
+            { cls: 'active-medium', text: 'Media',      color: '#f59e0b' },
+            { cls: 'active-medium', text: 'Buena',      color: '#f59e0b' },
+            { cls: 'active-strong', text: 'Fuerte',     color: '#22c55e' },
+        ];
+
+        const lvl = levels[Math.min(score, 4)];
+        for (let i = 0; i <= score && i < 4; i++) bars[i].classList.add(lvl.cls);
+        label.textContent  = lvl.text;
+        label.style.color  = lvl.color;
+    }
+
+    /* Validación cliente + loading */
+    document.getElementById('registerForm').addEventListener('submit', function(e) {
+        const pw  = document.getElementById('password').value;
+        const cfm = document.getElementById('confirm').value;
+        const trm = document.getElementById('terms').checked;
+
+        if (pw !== cfm) {
+            e.preventDefault();
+            alert('Las contraseñas no coinciden');
+            return;
+        }
+        if (!trm) {
+            e.preventDefault();
+            alert('Debes aceptar los términos');
+            return;
+        }
+
+        const btn   = document.getElementById('submitBtn');
+        const inner = document.getElementById('btnInner');
+        btn.disabled  = true;
+        inner.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creando cuenta...';
+    });
+</script>
+
+</body>
+</html>

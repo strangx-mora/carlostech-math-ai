@@ -1,12 +1,80 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" prefix="og: https://ogp.me/ns#">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>CarlosTech Math AI - Resolvedor de Integrales</title>
-    
-    <!-- CSS -->
+
+    <!-- ═══ SEO PRIMARY ═══ -->
+    <title>Calculadora de Integrales Online Gratis | CarlosTech Math AI</title>
+    <meta name="description" content="Resuelve integrales, derivadas, límites, series de Taylor y ecuaciones diferenciales paso a paso. Calculadora matemática online gratis con gráficas interactivas.">
+    <meta name="keywords" content="calculadora de integrales, resolver integrales online, integral paso a paso, calculadora de derivadas, límites matemáticos, series de Taylor, ecuaciones diferenciales, integral indefinida, integral definida, matemáticas online gratis, sympy, wolfram alpha alternativa, mathway alternativa">
+    <meta name="author" content="CarlosTech Math AI">
+    <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large">
+    <link rel="canonical" href="https://carlostech-math-ai.onrender.com/app">
+
+    <!-- ═══ OPEN GRAPH (Facebook, WhatsApp) ═══ -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Calculadora de Integrales Online Gratis | CarlosTech Math AI">
+    <meta property="og:description" content="Resuelve integrales, derivadas, límites y ecuaciones diferenciales paso a paso. Gratis, rápido y con gráficas interactivas.">
+    <meta property="og:url" content="https://carlostech-math-ai.onrender.com">
+    <meta property="og:site_name" content="CarlosTech Math AI">
+    <meta property="og:locale" content="es_ES">
+
+    <!-- ═══ TWITTER CARD ═══ -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Calculadora de Integrales Online Gratis | CarlosTech Math AI">
+    <meta name="twitter:description" content="Resuelve integrales paso a paso con detección automática de método. Gratis y sin registro.">
+
+    <!-- ═══ SCHEMA.ORG JSON-LD ═══ -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "CarlosTech Math AI",
+      "url": "https://carlostech-math-ai.onrender.com",
+      "description": "Calculadora de integrales, derivadas, límites, series de Taylor y ecuaciones diferenciales online gratis con pasos detallados.",
+      "applicationCategory": "EducationalApplication",
+      "operatingSystem": "Web",
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+      "featureList": [
+        "Calculadora de integrales indefinidas",
+        "Calculadora de integrales definidas",
+        "Calculadora de derivadas paso a paso",
+        "Calculadora de límites",
+        "Series de Taylor",
+        "Ecuaciones diferenciales ordinarias",
+        "Gráficas interactivas",
+        "Solución paso a paso"
+      ],
+      "inLanguage": "es"
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "¿Cómo resolver una integral paso a paso?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Ingresa la expresión en la calculadora, selecciona los límites si es definida y haz clic en Resolver. CarlosTech Math AI detecta automáticamente el método (regla de potencia, integración por partes, fracciones parciales, etc.) y muestra cada paso." }
+        },
+        {
+          "@type": "Question",
+          "name": "¿Es gratis la calculadora de integrales?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Sí, CarlosTech Math AI es completamente gratis. Solo necesitas crear una cuenta para acceder a todas las funciones." }
+        },
+        {
+          "@type": "Question",
+          "name": "¿Qué tipos de integrales puede resolver?",
+          "acceptedAnswer": { "@type": "Answer", "text": "Resuelve integrales polinómicas, trigonométricas, exponenciales, logarítmicas, racionales, radicales, integrales definidas e indefinidas, e integrales impropias." }
+        }
+      ]
+    }
+    </script>
+
+    <!-- ═══ CSS ═══ -->
     <link rel="stylesheet" href="/static/style.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mathquill@0.10.1/build/mathquill.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -36,17 +104,25 @@
 
             <!-- CENTER: nav links -->
             <div class="navbar-center">
-                <a href="#" class="nav-link active" onclick="scrollToSection(event,'.input-section')">
+                <a href="#" class="nav-link active" onclick="switchTool('integrales',this)">
                     <i class="fas fa-square-root-variable"></i>
                     Integrales
                 </a>
-                <a href="#" class="nav-link" onclick="scrollToSection(event,'#grafica-card')">
-                    <i class="fas fa-chart-line"></i>
-                    Gráfica
+                <a href="#" class="nav-link" onclick="switchTool('derivadas',this)">
+                    <i class="fas fa-prime"></i>
+                    Derivadas
                 </a>
-                <a href="#" class="nav-link" onclick="scrollToSection(event,'#pasos-card')">
-                    <i class="fas fa-list-ol"></i>
-                    Pasos
+                <a href="#" class="nav-link" onclick="switchTool('limites',this)">
+                    <i class="fas fa-arrow-right-to-bracket"></i>
+                    L&iacute;mites
+                </a>
+                <a href="#" class="nav-link" onclick="switchTool('taylor',this)">
+                    <i class="fas fa-wave-square"></i>
+                    Taylor
+                </a>
+                <a href="#" class="nav-link" onclick="switchTool('ode',this)">
+                    <i class="fas fa-infinity"></i>
+                    ODE
                 </a>
             </div>
 
@@ -60,19 +136,19 @@
                 <div class="nav-divider"></div>
 
                 <div class="nav-user" id="navUser">
-                    <div class="nav-avatar">C</div>
+                    <div class="nav-avatar">{{ username[0]|upper }}</div>
                     <div class="nav-user-info">
-                        <span class="nav-username">Carlos</span>
-                        <span class="nav-role">Estudiante</span>
+                        <span class="nav-username">{{ username }}</span>
+                        <span class="nav-role">{{ 'Admin' if role == 'admin' else 'Estudiante' }}</span>
                     </div>
                     <i class="fas fa-chevron-down nav-chevron"></i>
 
                     <div class="nav-dropdown" id="navDropdown">
                         <div class="dropdown-header">
-                            <div class="dropdown-avatar">C</div>
+                            <div class="dropdown-avatar">{{ username[0]|upper }}</div>
                             <div>
-                                <div class="dropdown-name">Carlos</div>
-                                <div class="dropdown-email">carlos@carlostech.ai</div>
+                                <div class="dropdown-name">{{ username }}</div>
+                                <div class="dropdown-email">{{ email }}</div>
                             </div>
                         </div>
                         <div class="dropdown-divider"></div>
@@ -86,6 +162,12 @@
                             <i class="fas fa-gear"></i> Configuración
                         </a>
                         <div class="dropdown-divider"></div>
+                        {% if role == 'admin' %}
+                        <a href="/admin" class="dropdown-item" style="color:#fbbf24;">
+                            <i class="fas fa-shield-halved"></i> Panel Admin
+                        </a>
+                        <div class="dropdown-divider"></div>
+                        {% endif %}
                         <a href="/logout" class="dropdown-item dropdown-logout">
                             <i class="fas fa-arrow-right-from-bracket"></i> Cerrar sesión
                         </a>
@@ -240,90 +322,193 @@
 
         <!-- CONTAINER -->
         <div class="container">
-            <!-- INPUT SECTION -->
-            <section class="input-section">
+
+            <!-- ═══ INTEGRALES ═══ -->
+            <section class="input-section tool-section" id="tool-integrales">
                 <div class="section-header">
-                    <h2>Ingresa tu expresión</h2>
-                    <p>Escribe la función que deseas integrar</p>
+                    <h2><i class="fas fa-square-root-variable"></i> Integrales</h2>
+                    <p>Resuelve integrales indefinidas y definidas paso a paso</p>
                 </div>
-
-                <!-- MATH EDITOR -->
                 <div class="editor-wrapper">
-                    <label class="editor-label">Expresión matemática</label>
+                    <label class="editor-label">Expresi&oacute;n matem&aacute;tica</label>
                     <div id="math-input" class="mathbox"></div>
-                    <div class="editor-hint">
-                        <i class="fas fa-lightbulb"></i>
-                        Usa el teclado de atajos o escribe directamente
-                    </div>
                 </div>
-
-                <!-- LIMITS -->
                 <div class="limits-wrapper">
                     <div class="limit-group">
-                        <label class="limit-label">
-                            <i class="fas fa-arrow-down"></i>
-                            Límite inferior
-                        </label>
+                        <label class="limit-label"><i class="fas fa-arrow-down"></i> L&iacute;mite inferior</label>
                         <input id="limiteA" type="number" step="any" placeholder="ej: 0" class="limit-input">
                     </div>
                     <div class="limit-group">
-                        <label class="limit-label">
-                            <i class="fas fa-arrow-up"></i>
-                            Límite superior
-                        </label>
+                        <label class="limit-label"><i class="fas fa-arrow-up"></i> L&iacute;mite superior</label>
                         <input id="limiteB" type="number" step="any" placeholder="ej: π" class="limit-input">
                     </div>
                 </div>
-
-                <!-- BUTTONS -->
                 <div class="button-group">
-                    <button class="btn btn-primary" onclick="resolver()">
-                        <i class="fas fa-play"></i>
-                        <span>Resolver</span>
-                    </button>
-                    <button class="btn btn-secondary" onclick="limpiar()">
-                        <i class="fas fa-trash"></i>
-                        <span>Limpiar</span>
-                    </button>
+                    <button class="btn btn-primary" onclick="resolver()"><i class="fas fa-play"></i><span>Resolver</span></button>
+                    <button class="btn btn-secondary" onclick="limpiar()"><i class="fas fa-trash"></i><span>Limpiar</span></button>
                 </div>
-
-                <!-- KEYBOARD -->
                 <div class="keyboard-wrapper">
-                    <div class="keyboard-header">
-                        <i class="fas fa-keyboard"></i>
-                        Atajos rápidos
-                    </div>
+                    <div class="keyboard-header"><i class="fas fa-keyboard"></i> Atajos rápidos</div>
                     <div class="keyboard-grid">
-                        <button class="key" onclick="insert('x')" title="Variable">x</button>
-                        <button class="key" onclick="insert('^2')" title="Cuadrado">x²</button>
-                        <button class="key" onclick="insert('^3')" title="Cubo">x³</button>
-                        <button class="key" onclick="insert('+')" title="Suma">+</button>
-                        <button class="key" onclick="insert('-')" title="Resta">−</button>
-                        <button class="key" onclick="insert('*')" title="Multiplicación">×</button>
-                        <button class="key" onclick="insert('/')" title="División">/</button>
-                        <button class="key" onclick="insert('\\\\sqrt{}')" title="Raíz">√</button>
-                        <button class="key" onclick="insert('\\\\frac{}{}')" title="Fracción">a/b</button>
-                        <button class="key" onclick="insert('\\\\sin')" title="Seno">sin</button>
-                        <button class="key" onclick="insert('\\\\cos')" title="Coseno">cos</button>
-                        <button class="key" onclick="insert('\\\\tan')" title="Tangente">tan</button>
-                        <button class="key" onclick="insert('\\\\exp')" title="Exponencial">eˣ</button>
-                        <button class="key" onclick="insert('\\\\log')" title="Logaritmo">log</button>
-                        <button class="key" onclick="insert('\\\\pi')" title="Pi">π</button>
-                        <button class="key" onclick="insert('(')" title="Paréntesis">()</button>
+                        <button class="key" onclick="insert('x')">x</button>
+                        <button class="key" onclick="insert('^2')">x²</button>
+                        <button class="key" onclick="insert('^3')">x³</button>
+                        <button class="key" onclick="insert('+')">+</button>
+                        <button class="key" onclick="insert('-')">-</button>
+                        <button class="key" onclick="insert('*')">x</button>
+                        <button class="key" onclick="insert('/')">/</button>
+                        <button class="key" onclick="insert('\\\\sqrt{}')">&#8730;</button>
+                        <button class="key" onclick="insert('\\\\frac{}{}')">a/b</button>
+                        <button class="key" onclick="insert('\\\\sin')">sin</button>
+                        <button class="key" onclick="insert('\\\\cos')">cos</button>
+                        <button class="key" onclick="insert('\\\\tan')">tan</button>
+                        <button class="key" onclick="insert('\\\\exp')">eˣ</button>
+                        <button class="key" onclick="insert('\\\\log')">log</button>
+                        <button class="key" onclick="insert('\\\\pi')">&#960;</button>
+                        <button class="key" onclick="insert('(')">( )</button>
                     </div>
                 </div>
-
-                <!-- EXAMPLES -->
                 <div class="examples-wrapper">
-                    <div class="examples-header">
-                        <i class="fas fa-book"></i>
-                        Ejemplos
-                    </div>
+                    <div class="examples-header"><i class="fas fa-book"></i> Ejemplos</div>
                     <div class="examples-grid">
                         <button class="example-btn" onclick="setExample('2x')">2x</button>
                         <button class="example-btn" onclick="setExample('x**2')">x²</button>
                         <button class="example-btn" onclick="setExample('sin(x)')">sin(x)</button>
                         <button class="example-btn" onclick="setExample('exp(x)')">eˣ</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ═══ DERIVADAS ═══ -->
+            <section class="input-section tool-section hidden" id="tool-derivadas">
+                <div class="section-header">
+                    <h2><i class="fas fa-prime"></i> Derivadas</h2>
+                    <p>Calcula derivadas de cualquier orden con pasos detallados</p>
+                </div>
+                <div class="editor-wrapper">
+                    <label class="editor-label">Funci&oacute;n f(x)</label>
+                    <div id="math-input-deriv" class="mathbox"></div>
+                </div>
+                <div class="limits-wrapper">
+                    <div class="limit-group">
+                        <label class="limit-label"><i class="fas fa-hashtag"></i> Orden</label>
+                        <input id="derivOrden" type="number" min="1" max="10" value="1" class="limit-input">
+                    </div>
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-primary" onclick="calcDerivada()"><i class="fas fa-play"></i><span>Derivar</span></button>
+                    <button class="btn btn-secondary" onclick="limpiarTool('deriv')"><i class="fas fa-trash"></i><span>Limpiar</span></button>
+                </div>
+                <div class="examples-wrapper">
+                    <div class="examples-header"><i class="fas fa-book"></i> Ejemplos</div>
+                    <div class="examples-grid">
+                        <button class="example-btn" onclick="setExampleTool('deriv','x**3')">x³</button>
+                        <button class="example-btn" onclick="setExampleTool('deriv','sin(x)')">sin(x)</button>
+                        <button class="example-btn" onclick="setExampleTool('deriv','exp(x)')">eˣ</button>
+                        <button class="example-btn" onclick="setExampleTool('deriv','log(x)')">ln(x)</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ═══ LIMITES ═══ -->
+            <section class="input-section tool-section hidden" id="tool-limites">
+                <div class="section-header">
+                    <h2><i class="fas fa-arrow-right-to-bracket"></i> L&iacute;mites</h2>
+                    <p>Calcula límites con detección automática de formas indeterminadas</p>
+                </div>
+                <div class="editor-wrapper">
+                    <label class="editor-label">Funci&oacute;n f(x)</label>
+                    <div id="math-input-limite" class="mathbox"></div>
+                </div>
+                <div class="limits-wrapper">
+                    <div class="limit-group">
+                        <label class="limit-label"><i class="fas fa-map-pin"></i> x tiende a</label>
+                        <input id="limitePunto" type="text" placeholder="ej: 0, oo, pi" class="limit-input" value="0">
+                    </div>
+                    <div class="limit-group">
+                        <label class="limit-label"><i class="fas fa-arrows-left-right"></i> Direcci&oacute;n</label>
+                        <select id="limiteDireccion" class="limit-input">
+                            <option value="+-">Bilateral (±)</option>
+                            <option value="+">Derecha (+)</option>
+                            <option value="-">Izquierda (-)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-primary" onclick="calcLimite()"><i class="fas fa-play"></i><span>Calcular</span></button>
+                    <button class="btn btn-secondary" onclick="limpiarTool('limite')"><i class="fas fa-trash"></i><span>Limpiar</span></button>
+                </div>
+                <div class="examples-wrapper">
+                    <div class="examples-header"><i class="fas fa-book"></i> Ejemplos</div>
+                    <div class="examples-grid">
+                        <button class="example-btn" onclick="setExampleTool('limite','sin(x)/x')">sin(x)/x</button>
+                        <button class="example-btn" onclick="setExampleTool('limite','(x**2-1)/(x-1)')">x²-1/x-1</button>
+                        <button class="example-btn" onclick="setExampleTool('limite','exp(x)')">eˣ → ∞</button>
+                        <button class="example-btn" onclick="setExampleTool('limite','1/x')">1/x</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ═══ TAYLOR ═══ -->
+            <section class="input-section tool-section hidden" id="tool-taylor">
+                <div class="section-header">
+                    <h2><i class="fas fa-wave-square"></i> Series de Taylor</h2>
+                    <p>Expande funciones en series de potencias alrededor de un punto</p>
+                </div>
+                <div class="editor-wrapper">
+                    <label class="editor-label">Funci&oacute;n f(x)</label>
+                    <div id="math-input-taylor" class="mathbox"></div>
+                </div>
+                <div class="limits-wrapper">
+                    <div class="limit-group">
+                        <label class="limit-label"><i class="fas fa-map-pin"></i> Punto de expansi&oacute;n</label>
+                        <input id="taylorPunto" type="text" placeholder="ej: 0" class="limit-input" value="0">
+                    </div>
+                    <div class="limit-group">
+                        <label class="limit-label"><i class="fas fa-hashtag"></i> Orden</label>
+                        <input id="taylorOrden" type="number" min="2" max="20" value="6" class="limit-input">
+                    </div>
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-primary" onclick="calcTaylor()"><i class="fas fa-play"></i><span>Expandir</span></button>
+                    <button class="btn btn-secondary" onclick="limpiarTool('taylor')"><i class="fas fa-trash"></i><span>Limpiar</span></button>
+                </div>
+                <div class="examples-wrapper">
+                    <div class="examples-header"><i class="fas fa-book"></i> Ejemplos</div>
+                    <div class="examples-grid">
+                        <button class="example-btn" onclick="setExampleTool('taylor','sin(x)')">sin(x)</button>
+                        <button class="example-btn" onclick="setExampleTool('taylor','exp(x)')">eˣ</button>
+                        <button class="example-btn" onclick="setExampleTool('taylor','cos(x)')">cos(x)</button>
+                        <button class="example-btn" onclick="setExampleTool('taylor','log(1+x)')">ln(1+x)</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ═══ ODE ═══ -->
+            <section class="input-section tool-section hidden" id="tool-ode">
+                <div class="section-header">
+                    <h2><i class="fas fa-infinity"></i> Ecuaciones Diferenciales</h2>
+                    <p>Resuelve ODEs de primer y segundo orden</p>
+                </div>
+                <div class="editor-wrapper">
+                    <label class="editor-label">Ecuaci&oacute;n (usa y' para dy/dx, y'' para d²y/dx²)</label>
+                    <div id="math-input-ode" class="mathbox"></div>
+                </div>
+                <div class="tool-hint">
+                    <i class="fas fa-circle-info"></i>
+                    Ejemplos de formato: <code>y' - y</code> &rarr; y'-y=0 &nbsp;|&nbsp; <code>y'' + y</code> &rarr; y''+y=0
+                </div>
+                <div class="button-group">
+                    <button class="btn btn-primary" onclick="calcODE()"><i class="fas fa-play"></i><span>Resolver</span></button>
+                    <button class="btn btn-secondary" onclick="limpiarTool('ode')"><i class="fas fa-trash"></i><span>Limpiar</span></button>
+                </div>
+                <div class="examples-wrapper">
+                    <div class="examples-header"><i class="fas fa-book"></i> Ejemplos</div>
+                    <div class="examples-grid">
+                        <button class="example-btn" onclick="setExampleTool('ode',\"y' - y\")">y' = y</button>
+                        <button class="example-btn" onclick="setExampleTool('ode',\"y' + 2*y\")">y' + 2y = 0</button>
+                        <button class="example-btn" onclick="setExampleTool('ode',\"y'' + y\")">y'' + y = 0</button>
+                        <button class="example-btn" onclick="setExampleTool('ode',\"y' - x\")">y' = x</button>
                     </div>
                 </div>
             </section>
@@ -371,9 +556,17 @@
                             <i class="fas fa-list-ol"></i>
                             Pasos de la solución
                         </div>
-                        <button class="card-close" onclick="ocultarPasos()">
-                            <i class="fas fa-times"></i>
-                        </button>
+                        <div style="display:flex;gap:.5rem;align-items:center;">
+                            <button class="modal-action-btn" onclick="exportarPDF()" title="Exportar PDF">
+                                <i class="fas fa-file-pdf"></i> PDF
+                            </button>
+                            <button class="modal-action-btn" onclick="compartirSolucion()" title="Compartir">
+                                <i class="fas fa-share-nodes"></i> Compartir
+                            </button>
+                            <button class="card-close" onclick="ocultarPasos()">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
                     </div>
                     <div class="card-content">
                         <div id="pasos" class="steps-container"></div>
@@ -394,11 +587,11 @@
             </div>
             <div class="modal-body">
                 <div class="profile-hero">
-                    <div class="profile-avatar-lg">C</div>
+                    <div class="profile-avatar-lg">{{ username[0]|upper }}</div>
                     <div class="profile-info">
-                        <h2 class="profile-name">Carlos</h2>
-                        <span class="profile-badge"><i class="fas fa-graduation-cap"></i> Estudiante</span>
-                        <p class="profile-email"><i class="fas fa-envelope"></i> carlos@carlostech.ai</p>
+                        <h2 class="profile-name">{{ username }}</h2>
+                        <span class="profile-badge"><i class="fas fa-{{ 'shield-halved' if role == 'admin' else 'graduation-cap' }}"></i> {{ 'Admin' if role == 'admin' else 'Estudiante' }}</span>
+                        <p class="profile-email"><i class="fas fa-envelope"></i> {{ email }}</p>
                     </div>
                 </div>
                 <div class="profile-stats-grid">
@@ -423,11 +616,11 @@
                 <div class="profile-fields">
                     <div class="pfield">
                         <label>Usuario</label>
-                        <div class="pfield-val">carlos</div>
+                        <div class="pfield-val">{{ username }}</div>
                     </div>
                     <div class="pfield">
                         <label>Plan</label>
-                        <div class="pfield-val"><span class="plan-badge">Free</span></div>
+                        <div class="pfield-val"><span class="plan-badge">{{ 'Admin' if role == 'admin' else 'Free' }}</span></div>
                     </div>
                     <div class="pfield">
                         <label>Miembro desde</label>
@@ -438,6 +631,19 @@
                         <div class="pfield-val" id="last-active">Ahora</div>
                     </div>
                 </div>
+
+                {% if role != 'admin' %}
+                <div class="profile-section-title" style="margin-top:1.5rem;">Cambiar contraseña</div>
+                <div class="cambiar-pass-form">
+                    <input type="password" id="pass-actual" placeholder="Contraseña actual" class="limit-input" style="margin-bottom:.5rem;">
+                    <input type="password" id="pass-nueva" placeholder="Nueva contraseña" class="limit-input" style="margin-bottom:.5rem;">
+                    <input type="password" id="pass-confirm" placeholder="Confirmar nueva contraseña" class="limit-input" style="margin-bottom:.75rem;">
+                    <button class="btn btn-primary" style="width:100%;padding:.7rem;font-size:.875rem;" onclick="cambiarPassword()">
+                        <i class="fas fa-key"></i> Actualizar contraseña
+                    </button>
+                    <div id="pass-msg" style="margin-top:.5rem;font-size:.8rem;display:none;"></div>
+                </div>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -471,6 +677,16 @@
 
                 <div class="config-section">
                     <div class="config-section-title"><i class="fas fa-palette"></i> Apariencia</div>
+                    <div class="config-row">
+                        <div class="config-info">
+                            <span class="config-label">Modo claro</span>
+                            <span class="config-desc">Cambiar entre tema oscuro y claro</span>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="cfg-light" onchange="toggleLightMode()">
+                            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                        </label>
+                    </div>
                     <div class="config-row">
                         <div class="config-info">
                             <span class="config-label">Tema de gráficas</span>
@@ -551,6 +767,35 @@
         </div>
     </div>
 
+    <!-- SEO CONTENT -->
+    <section style="max-width:1280px;margin:0 auto;padding:3rem 1.5rem 1rem;">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:2rem;">
+            <div>
+                <h2 style="font-size:1.1rem;font-weight:700;color:#a5b4fc;margin-bottom:0.75rem;">Calculadora de Integrales Online</h2>
+                <p style="font-size:0.85rem;color:#64748b;line-height:1.7;">Resuelve integrales indefinidas y definidas al instante. Soporta integrales polinómicas, trigonométricas (sin, cos, tan), exponenciales, logarítmicas, racionales y radicales. Detecta automáticamente el método: regla de potencia, integración por partes, fracciones parciales y sustitución trigonométrica.</p>
+            </div>
+            <div>
+                <h2 style="font-size:1.1rem;font-weight:700;color:#a5b4fc;margin-bottom:0.75rem;">Derivadas y Límites Paso a Paso</h2>
+                <p style="font-size:0.85rem;color:#64748b;line-height:1.7;">Calcula derivadas de cualquier orden con explicación detallada de cada regla aplicada (potencia, cadena, producto, cociente). Calcula límites laterales y bilaterales con detección automática de formas indeterminadas y aplicación de la Regla de L'Hôpital.</p>
+            </div>
+            <div>
+                <h2 style="font-size:1.1rem;font-weight:700;color:#a5b4fc;margin-bottom:0.75rem;">Series de Taylor y Ecuaciones Diferenciales</h2>
+                <p style="font-size:0.85rem;color:#64748b;line-height:1.7;">Expande cualquier función en serie de Taylor o Maclaurin alrededor de cualquier punto. Resuelve ecuaciones diferenciales ordinarias (ODE) de primer y segundo orden: separables, lineales, Bernoulli y con coeficientes constantes.</p>
+            </div>
+        </div>
+        <!-- Keywords ocultos para SEO -->
+        <div style="margin-top:1.5rem;padding-top:1rem;border-top:1px solid rgba(255,255,255,0.05);">
+            <p style="font-size:0.75rem;color:#334155;line-height:2;">
+                calculadora de integrales &bull; resolver integrales online &bull; integral paso a paso &bull;
+                calculadora de derivadas &bull; derivada paso a paso &bull; límites matemáticos &bull;
+                series de taylor &bull; ecuaciones diferenciales &bull; integral definida &bull;
+                integral indefinida &bull; integración por partes &bull; fracciones parciales &bull;
+                sustitución trigonométrica &bull; regla de potencia &bull; matemáticas online gratis &bull;
+                wolfram alpha en español &bull; mathway en español &bull; calculadora de cálculo
+            </p>
+        </div>
+    </section>
+
     <!-- FOOTER -->
     <footer class="footer">
         <div class="footer-content">
@@ -566,31 +811,199 @@
     <script>
         // VARIABLES
         var MQ = MathQuill.getInterface(2);
-        var mathField = MQ.MathField(document.getElementById('math-input'));
+        var mathField       = MQ.MathField(document.getElementById('math-input'));
+        var mathFieldDeriv  = MQ.MathField(document.getElementById('math-input-deriv'));
+        var mathFieldLimite = MQ.MathField(document.getElementById('math-input-limite'));
+        var mathFieldTaylor = MQ.MathField(document.getElementById('math-input-taylor'));
+        var mathFieldODE    = MQ.MathField(document.getElementById('math-input-ode'));
 
         // ═══════════════════════════════════════════
-        // STORAGE
+        // SWITCH TOOL
         // ═══════════════════════════════════════════
-        const STORAGE_KEY = 'carlostech_data';
-        let sessionCount = 0;
-
-        function getData() {
-            try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || { history: [], total: 0, methods: {}, since: new Date().toISOString() }; }
-            catch { return { history: [], total: 0, methods: {}, since: new Date().toISOString() }; }
+        function switchTool(tool, linkEl) {
+            window._activeTool = tool;
+            document.querySelectorAll('.tool-section').forEach(s => s.classList.add('hidden'));
+            document.getElementById('tool-' + tool).classList.remove('hidden');
+            document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+            if (linkEl) linkEl.classList.add('active');
+            document.querySelector('.input-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
+        function setExampleTool(tool, expr) {
+            const fields = { deriv: mathFieldDeriv, limite: mathFieldLimite, taylor: mathFieldTaylor, ode: mathFieldODE };
+            if (fields[tool]) { fields[tool].latex(expr); fields[tool].focus(); }
+        }
+
+        function limpiarTool(tool) {
+            const fields = { deriv: mathFieldDeriv, limite: mathFieldLimite, taylor: mathFieldTaylor, ode: mathFieldODE };
+            if (fields[tool]) fields[tool].latex('');
+            document.getElementById('resultado-card').classList.add('hidden');
+            document.getElementById('grafica-card').classList.add('hidden');
+            document.getElementById('pasos-card').classList.add('hidden');
+        }
+
+        // ═══════════════════════════════════════════
+        // DERIVADAS
+        // ═══════════════════════════════════════════
+        function calcDerivada() {
+            const expr  = mathFieldDeriv.latex();
+            const orden = document.getElementById('derivOrden').value || 1;
+            if (!expr.trim()) { alert('Ingresa una expresión'); return; }
+            mostrarLoading();
+            fetch('/api/derivada', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ expresion: expr, orden: parseInt(orden) })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (!data.success) { mostrarError(data.error); return; }
+                mostrarResultadoGenerico(data.result, `Derivada orden ${orden}`, data.computation_time || '');
+                if (data.steps) mostrarPasos(data.steps, `Derivada orden ${orden}`, data.input, data.result);
+                MathJax.typeset();
+            })
+            .catch(() => mostrarError('Error en la solicitud'));
+        }
+
+        // ═══════════════════════════════════════════
+        // LÍMITES
+        // ═══════════════════════════════════════════
+        function calcLimite() {
+            const expr      = mathFieldLimite.latex();
+            const punto     = document.getElementById('limitePunto').value || '0';
+            const direccion = document.getElementById('limiteDireccion').value;
+            if (!expr.trim()) { alert('Ingresa una expresión'); return; }
+            mostrarLoading();
+            fetch('/api/limite', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ expresion: expr, punto, direccion })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (!data.success) { mostrarError(data.error); return; }
+                mostrarResultadoGenerico(data.result, `Límite en x→${punto}`, '');
+                if (data.steps) mostrarPasos(data.steps, 'Límite', data.input, data.result);
+                MathJax.typeset();
+            })
+            .catch(() => mostrarError('Error en la solicitud'));
+        }
+
+        // ═══════════════════════════════════════════
+        // TAYLOR
+        // ═══════════════════════════════════════════
+        function calcTaylor() {
+            const expr  = mathFieldTaylor.latex();
+            const punto = document.getElementById('taylorPunto').value || '0';
+            const orden = document.getElementById('taylorOrden').value || 6;
+            if (!expr.trim()) { alert('Ingresa una expresión'); return; }
+            mostrarLoading();
+            fetch('/api/taylor', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ expresion: expr, punto, orden: parseInt(orden) })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (!data.success) { mostrarError(data.error); return; }
+                mostrarResultadoGenerico(data.serie, `Serie de Taylor orden ${orden}`, '');
+                if (data.steps) mostrarPasos(data.steps, 'Serie de Taylor', data.input, data.result);
+                MathJax.typeset();
+            })
+            .catch(() => mostrarError('Error en la solicitud'));
+        }
+
+        // ═══════════════════════════════════════════
+        // ODE
+        // ═══════════════════════════════════════════
+        function calcODE() {
+            const expr = mathFieldODE.latex();
+            if (!expr.trim()) { alert('Ingresa una ecuación'); return; }
+            mostrarLoading();
+            fetch('/api/ode', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ expresion: expr })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (!data.success) { mostrarError(data.error); return; }
+                mostrarResultadoGenerico(data.result, 'Solución ODE', '');
+                if (data.steps) mostrarPasos(data.steps, 'Ecuación Diferencial', data.input, data.result);
+                MathJax.typeset();
+            })
+            .catch(() => mostrarError('Error en la solicitud'));
+        }
+
+        // ═══════════════════════════════════════════
+        // HELPERS UI
+        // ═══════════════════════════════════════════
+        function mostrarLoading() {
+            document.getElementById('resultado-card').classList.remove('hidden');
+            document.getElementById('resultado').innerHTML = `
+                <div class="loading"><div class="spinner"></div><p class="loading-text">Calculando...</p></div>`;
+            document.getElementById('grafica-card').classList.add('hidden');
+            document.getElementById('pasos-card').classList.add('hidden');
+        }
+
+        function mostrarError(msg) {
+            document.getElementById('resultado').innerHTML = `
+                <div class="error-box"><i class="fas fa-exclamation-circle"></i>
+                <div><strong>Error</strong><p>${msg || 'Error desconocido'}</p></div></div>`;
+        }
+
+        function mostrarResultadoGenerico(result, metodo, tiempo) {
+            document.getElementById('resultado').innerHTML = `
+                <div class="result-box">
+                    <div class="result-label">Resultado</div>
+                    <div class="result-value" id="result-value-display">$$${result}$$</div>
+                    <div class="result-meta">
+                        <span class="meta-item"><i class="fas fa-cog"></i>${metodo}</span>
+                        ${tiempo ? `<span class="meta-item"><i class="fas fa-clock"></i>${tiempo}</span>` : ''}
+                    </div>
+                    <button class="copy-result-btn" onclick="copiarResultado('${result.replace(/'/g,"\\'").replace(/"/g,'&quot;')}')" title="Copiar resultado">
+                        <i class="fas fa-copy"></i> Copiar resultado
+                    </button>
+                </div>`;
+            window._lastResult = result;
+        }
+
+        function copiarResultado(latex) {
+            const btn = document.querySelector('.copy-result-btn');
+            navigator.clipboard.writeText(latex)
+                .then(() => {
+                    if (btn) { btn.classList.add('copied'); btn.innerHTML = '<i class="fas fa-check"></i> ¡Copiado!'; }
+                    showToast('Resultado copiado al portapapeles');
+                    setTimeout(() => { if (btn) { btn.classList.remove('copied'); btn.innerHTML = '<i class="fas fa-copy"></i> Copiar resultado'; } }, 2000);
+                })
+                .catch(() => prompt('Copia el resultado:', latex));
+        }
+
+        // ═══════════════════════════════════════════
+        // STORAGE (historial en DB)
+        // ═══════════════════════════════════════════
+        let sessionCount = 0;
+        // Stats locales (método favorito, días activo)
+        const STORAGE_KEY = 'carlostech_data';
+        function getData() {
+            try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || { methods: {}, since: new Date().toISOString() }; }
+            catch { return { methods: {}, since: new Date().toISOString() }; }
+        }
         function saveData(d) { localStorage.setItem(STORAGE_KEY, JSON.stringify(d)); }
 
-        function addToHistory(expr, result, method, time) {
+        function addToHistory(input, result, method, tool) {
             const cfg = loadConfig();
             if (!cfg.history) return;
+            // Guardar en DB
+            fetch('/api/history', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ input, result, method, tool: tool || window._activeTool || 'integrales' })
+            }).catch(() => {});
+            // Stats locales
             const d = getData();
-            d.total = (d.total || 0) + 1;
             d.methods = d.methods || {};
             d.methods[method] = (d.methods[method] || 0) + 1;
-            d.history = d.history || [];
-            d.history.unshift({ expr, result, method, time, date: new Date().toISOString() });
-            if (d.history.length > 50) d.history = d.history.slice(0, 50);
             saveData(d);
             sessionCount++;
         }
@@ -604,15 +1017,14 @@
         function getDaysActive() {
             const d = getData();
             if (!d.since) return 1;
-            const diff = Math.floor((Date.now() - new Date(d.since)) / 86400000);
-            return Math.max(1, diff);
+            return Math.max(1, Math.floor((Date.now() - new Date(d.since)) / 86400000));
         }
 
         // ═══════════════════════════════════════════
         // CONFIG
         // ═══════════════════════════════════════════
         const CFG_KEY = 'carlostech_cfg';
-        const CFG_DEFAULT = { color: '#3b82f6', anim: true, verify: true, history: true, autograph: true, tips: false };
+        const CFG_DEFAULT = { color: '#3b82f6', anim: true, verify: true, history: true, autograph: true, tips: false, light: false };
 
         function loadConfig() {
             try { return Object.assign({}, CFG_DEFAULT, JSON.parse(localStorage.getItem(CFG_KEY))); }
@@ -627,6 +1039,7 @@
                 history:   document.getElementById('cfg-history').checked,
                 autograph: document.getElementById('cfg-autograph').checked,
                 tips:      document.getElementById('cfg-tips').checked,
+                light:     document.getElementById('cfg-light').checked,
             };
             localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
             showToast('Configuración guardada');
@@ -635,17 +1048,33 @@
         function resetConfig() {
             localStorage.removeItem(CFG_KEY);
             applyConfigToUI(CFG_DEFAULT);
+            document.body.classList.remove('light');
             showToast('Valores restaurados');
         }
 
         function applyConfigToUI(cfg) {
-            document.getElementById('cfg-color').value     = cfg.color;
-            document.getElementById('cfg-anim').checked    = cfg.anim;
-            document.getElementById('cfg-verify').checked  = cfg.verify;
-            document.getElementById('cfg-history').checked = cfg.history;
+            document.getElementById('cfg-color').value       = cfg.color;
+            document.getElementById('cfg-anim').checked      = cfg.anim;
+            document.getElementById('cfg-verify').checked    = cfg.verify;
+            document.getElementById('cfg-history').checked   = cfg.history;
             document.getElementById('cfg-autograph').checked = cfg.autograph;
-            document.getElementById('cfg-tips').checked    = cfg.tips;
+            document.getElementById('cfg-tips').checked      = cfg.tips;
+            document.getElementById('cfg-light').checked     = !!cfg.light;
         }
+
+        function toggleLightMode() {
+            const on = document.getElementById('cfg-light').checked;
+            document.body.classList.toggle('light', on);
+            saveConfig();
+        }
+
+        // Aplicar modo claro al cargar
+        (function(){
+            try {
+                const cfg = JSON.parse(localStorage.getItem(CFG_KEY)) || {};
+                if (cfg.light) document.body.classList.add('light');
+            } catch(e) {}
+        })();
 
         // ═══════════════════════════════════════════
         // MODALES
@@ -673,48 +1102,51 @@
         // RENDER PERFIL
         // ═══════════════════════════════════════════
         function renderPerfil() {
-            const d = getData();
-            document.getElementById('stat-total').textContent   = d.total || 0;
             document.getElementById('stat-session').textContent = sessionCount;
             document.getElementById('stat-method').textContent  = getFavoriteMethod();
             document.getElementById('stat-streak').textContent  = getDaysActive();
-            const since = d.since ? new Date(d.since).toLocaleDateString('es-ES', { day:'2-digit', month:'short', year:'numeric' }) : 'Hoy';
-            document.getElementById('member-since').textContent = since;
             document.getElementById('last-active').textContent  = 'Ahora mismo';
+            const since = getData().since;
+            document.getElementById('member-since').textContent = since
+                ? new Date(since).toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'numeric'})
+                : 'Hoy';
+            // Total desde DB
+            fetch('/api/history').then(r=>r.json()).then(rows => {
+                document.getElementById('stat-total').textContent = rows.length;
+            }).catch(()=>{});
         }
 
         // ═══════════════════════════════════════════
         // RENDER HISTORIAL
         // ═══════════════════════════════════════════
         function renderHistorial() {
-            const d = getData();
             const list = document.getElementById('historial-list');
-            if (!d.history || d.history.length === 0) {
-                list.innerHTML = `
-                    <div class="historial-empty">
-                        <i class="fas fa-clock-rotate-left"></i>
-                        <p>No hay integrales en el historial</p>
-                        <span>Resuelve una integral para verla aquí</span>
-                    </div>`;
-                return;
-            }
-            list.innerHTML = d.history.map((item, i) => `
-                <div class="historial-item" onclick="loadFromHistory('${item.expr.replace(/'/g,"\\'")}')"
-                     style="animation-delay:${i*0.04}s">
-                    <div class="hi-left">
-                        <div class="hi-icon"><i class="fas fa-square-root-variable"></i></div>
-                        <div class="hi-body">
-                            <div class="hi-expr">\\(\\displaystyle ${item.expr}\\)</div>
-                            <div class="hi-result">\\(= ${item.result}\\)</div>
+            list.innerHTML = `<div class="historial-empty"><div class="spinner" style="width:24px;height:24px;border-width:2px;"></div></div>`;
+            fetch('/api/history').then(r => r.json()).then(rows => {
+                if (!rows.length) {
+                    list.innerHTML = `<div class="historial-empty"><i class="fas fa-clock-rotate-left"></i><p>No hay c\u00e1lculos en el historial</p><span>Resuelve una expresi\u00f3n para verla aqu\u00ed</span></div>`;
+                    return;
+                }
+                list.innerHTML = rows.map((item, i) => `
+                    <div class="historial-item" onclick="loadFromHistory('${item.input.replace(/'/g,"\\'")}')"
+                         style="animation-delay:${i*0.04}s">
+                        <div class="hi-left">
+                            <div class="hi-icon"><i class="fas fa-square-root-variable"></i></div>
+                            <div class="hi-body">
+                                <div class="hi-expr">\\(\\displaystyle ${item.input}\\)</div>
+                                <div class="hi-result">\\(= ${item.result}\\)</div>
+                            </div>
                         </div>
-                    </div>
-                    <div class="hi-right">
-                        <span class="hi-method">${item.method.split(' ')[0]}</span>
-                        <span class="hi-time">${item.time}</span>
-                        <span class="hi-date">${new Date(item.date).toLocaleDateString('es-ES',{day:'2-digit',month:'short'})}</span>
-                    </div>
-                </div>`).join('');
-            MathJax.typeset();
+                        <div class="hi-right">
+                            <span class="hi-method">${item.method.split(' ')[0]}</span>
+                            ${item.views > 0 ? `<span class="hi-views-badge"><i class="fas fa-eye"></i> ${item.views}</span>` : ''}
+                            <span class="hi-date">${new Date(item.created).toLocaleDateString('es-ES',{day:'2-digit',month:'short'})}</span>
+                        </div>
+                    </div>`).join('');
+                MathJax.typeset();
+            }).catch(() => {
+                list.innerHTML = `<div class="historial-empty"><i class="fas fa-exclamation-circle"></i><p>Error al cargar el historial</p></div>`;
+            });
         }
 
         function loadFromHistory(expr) {
@@ -726,11 +1158,9 @@
 
         function clearHistory() {
             if (!confirm('\u00bfEliminar todo el historial?')) return;
-            const d = getData();
-            d.history = [];
-            saveData(d);
-            renderHistorial();
-            showToast('Historial eliminado');
+            fetch('/api/history', { method: 'DELETE' })
+                .then(() => { renderHistorial(); showToast('Historial eliminado'); })
+                .catch(() => showToast('Error al eliminar', 'error'));
         }
 
         // ═══════════════════════════════════════════
@@ -821,26 +1251,10 @@
 
         function resolver() {
             let latex = mathField.latex();
-
-            if (!latex || latex.trim() === '') {
-                alert('Por favor ingresa una expresión');
-                return;
-            }
-
+            if (!latex || latex.trim() === '') { alert('Por favor ingresa una expresión'); return; }
             let a = document.getElementById('limiteA').value || null;
             let b = document.getElementById('limiteB').value || null;
-
-            // Mostrar loading
-            document.getElementById('resultado-card').classList.remove('hidden');
-            document.getElementById('resultado').innerHTML = `
-                <div class="loading">
-                    <div class="spinner"></div>
-                    <p class="loading-text">Resolviendo...</p>
-                </div>
-            `;
-            document.getElementById('grafica-card').classList.add('hidden');
-            document.getElementById('pasos-card').classList.add('hidden');
-
+            mostrarLoading();
             fetch('/api/resolver', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -849,35 +1263,10 @@
             .then(res => res.json())
             .then(data => {
                 if (!data.success) {
-                    document.getElementById('resultado').innerHTML = `
-                        <div class="error-box">
-                            <i class="fas fa-exclamation-circle"></i>
-                            <div>
-                                <strong>Error</strong>
-                                <p>${data.error || 'Error desconocido'}</p>
-                            </div>
-                        </div>
-                    `;
+                    mostrarError(data.error);
                     return;
                 }
-
-                // Mostrar resultado
-                document.getElementById('resultado').innerHTML = `
-                    <div class="result-box">
-                        <div class="result-label">Resultado</div>
-                        <div class="result-value">$$${data.result}$$</div>
-                        <div class="result-meta">
-                            <span class="meta-item">
-                                <i class="fas fa-cog"></i>
-                                ${data.method_detected || 'General'}
-                            </span>
-                            <span class="meta-item">
-                                <i class="fas fa-clock"></i>
-                                ${data.computation_time}
-                            </span>
-                        </div>
-                    </div>
-                `;
+                mostrarResultadoGenerico(data.result, data.method_detected || 'General', data.computation_time);
 
                 // Graficar
                 const cfg = loadConfig();
@@ -895,15 +1284,7 @@
             })
             .catch(err => {
                 console.error('Error:', err);
-                document.getElementById('resultado').innerHTML = `
-                    <div class="error-box">
-                        <i class="fas fa-exclamation-circle"></i>
-                        <div>
-                            <strong>Error</strong>
-                            <p>Error en la solicitud. Intenta nuevamente.</p>
-                        </div>
-                    </div>
-                `;
+                mostrarError('Error en la solicitud. Intenta nuevamente.');
             });
         }
 
@@ -986,6 +1367,9 @@
         }
 
         function mostrarPasos(steps, method, inputExpr, resultExpr) {
+            // Guardar datos actuales para PDF/compartir
+            window._lastSolution = { steps, method, input: inputExpr, result: resultExpr, tool: window._activeTool || 'integrales' };
+
             document.getElementById('pasos-card').classList.remove('hidden');
 
             const icons = {
@@ -1047,6 +1431,129 @@
             document.getElementById('pasos').innerHTML = html;
             MathJax.typeset();
         }
+
+        // ═══════════════════════════════════════════
+        // EXPORTAR PDF
+        // ═══════════════════════════════════════════
+        function exportarPDF() {
+            const sol = window._lastSolution;
+            if (!sol) { showToast('Resuelve primero una expresión', 'error'); return; }
+            showToast('Generando PDF...');
+
+            const stepsHtml = sol.steps.map((step, i) => `
+                <div style="display:flex;gap:12px;margin-bottom:18px;page-break-inside:avoid;">
+                    <div style="min-width:26px;height:26px;border-radius:50%;background:#ede9fe;border:2px solid #7c3aed;display:flex;align-items:center;justify-content:center;font-size:11px;color:#7c3aed;flex-shrink:0;margin-top:2px;">${i+1}</div>
+                    <div style="flex:1;">
+                        <div style="font-size:13px;font-weight:700;color:#1e293b;margin-bottom:4px;">${step.title}</div>
+                        ${step.text ? `<p style="font-size:12px;color:#475569;margin:0 0 6px;line-height:1.6;">${step.text}</p>` : ''}
+                        ${step.math ? `<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:10px 14px;font-size:12px;color:#334155;overflow-x:auto;">\\[${step.math}\\]</div>` : ''}
+                    </div>
+                </div>`).join('');
+
+            const html = `<!DOCTYPE html><html lang="es"><head>
+                <meta charset="UTF-8">
+                <title>Solución — CarlosTech Math AI</title>
+                <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"><\/script>
+                <style>
+                    *{box-sizing:border-box;}
+                    body{font-family:'Segoe UI',Arial,sans-serif;max-width:750px;margin:0 auto;padding:2rem;color:#1e293b;background:#fff;}
+                    h1{font-size:1.25rem;color:#4f46e5;margin:0 0 .2rem;}
+                    .meta{font-size:.75rem;color:#64748b;margin-bottom:1.5rem;}
+                    .result-box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:1rem 1.25rem;margin-bottom:1.5rem;text-align:center;}
+                    .rl{font-size:.65rem;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8;margin-bottom:.3rem;}
+                    .rv{font-size:1.1rem;color:#4f46e5;}
+                    .st{font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;color:#94a3b8;margin-bottom:1rem;border-bottom:1px solid #e2e8f0;padding-bottom:.5rem;}
+                    footer{margin-top:2rem;padding-top:1rem;border-top:1px solid #e2e8f0;font-size:.7rem;color:#94a3b8;text-align:center;}
+                </style>
+            </head><body>
+                <h1>CarlosTech Math AI — Solución</h1>
+                <div class="meta">Método: ${sol.method} &nbsp;·&nbsp; ${new Date().toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'numeric'})}</div>
+                <div class="result-box">
+                    <div class="rl">Expresión</div>
+                    <div class="rv">\\(\\displaystyle ${sol.input}\\)</div>
+                    <div class="rl" style="margin-top:.75rem;">Resultado</div>
+                    <div class="rv">\\(\\displaystyle ${sol.result}\\)</div>
+                </div>
+                <div class="st">Pasos de la solución</div>
+                ${stepsHtml}
+                <footer>Generado con CarlosTech Math AI · carlostech-math-ai.onrender.com</footer>
+                <script>
+                    window.addEventListener('load', () => {
+                        MathJax.typeset().then(() => {
+                            setTimeout(() => {
+                                window.print();
+                                window.onafterprint = () => window.close();
+                            }, 300);
+                        });
+                    });
+                <\/script>
+            </body></html>`;
+
+            const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+            const url  = URL.createObjectURL(blob);
+            const win  = window.open(url, '_blank');
+            if (!win) {
+                // fallback si el navegador bloquea popups
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'solucion-carlostech.html';
+                a.click();
+                setTimeout(() => URL.revokeObjectURL(url), 5000);
+            }
+        }
+
+        // ═══════════════════════════════════════════
+        // COMPARTIR SOLUCIÓN
+        // ═══════════════════════════════════════════
+        function compartirSolucion() {
+            const sol = window._lastSolution;
+            if (!sol) { showToast('Resuelve primero una expresión', 'error'); return; }
+            fetch('/api/compartir', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(sol)
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) { showToast('Error al compartir', 'error'); return; }
+                navigator.clipboard.writeText(data.url)
+                    .then(() => showToast('¡Link copiado al portapapeles!'))
+                    .catch(() => prompt('Copia este link:', data.url));
+            })
+            .catch(() => showToast('Error al compartir', 'error'));
+        }
+
+        function cambiarPassword() {
+            const actual  = document.getElementById('pass-actual').value.trim();
+            const nueva   = document.getElementById('pass-nueva').value.trim();
+            const confirm = document.getElementById('pass-confirm').value.trim();
+            const msg     = document.getElementById('pass-msg');
+            if (!actual || !nueva || !confirm) {
+                msg.style.display='block'; msg.style.color='#fca5a5';
+                msg.textContent='Completa todos los campos'; return;
+            }
+            fetch('/api/cambiar-password', {
+                method: 'POST',
+                headers: {'Content-Type':'application/json'},
+                body: JSON.stringify({actual, nueva, confirm})
+            })
+            .then(r => r.json())
+            .then(data => {
+                msg.style.display = 'block';
+                if (data.ok) {
+                    msg.style.color = '#4ade80';
+                    msg.textContent = '\u2713 Contrase\u00f1a actualizada';
+                    document.getElementById('pass-actual').value = '';
+                    document.getElementById('pass-nueva').value  = '';
+                    document.getElementById('pass-confirm').value = '';
+                } else {
+                    msg.style.color = '#fca5a5';
+                    msg.textContent = data.error || 'Error al cambiar la contrase\u00f1a';
+                }
+            })
+            .catch(() => { msg.style.display='block'; msg.style.color='#fca5a5'; msg.textContent='Error de conexi\u00f3n'; });
+        }
+
     </script>
 
 </body>

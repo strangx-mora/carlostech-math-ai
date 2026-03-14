@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CarlosTech Math AI — Recuperar contraseña</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --indigo: #6366f1; --purple: #8b5cf6;
+            --bg: #080d1a; --bg2: #0f172a;
+            --text: #f1f5f9; --muted: #64748b; --border: rgba(148,163,184,0.1);
+        }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2rem; }
+        .card { width: 100%; max-width: 420px; background: var(--bg2); border: 1px solid var(--border); border-radius: 1.25rem; padding: 2.5rem; animation: fadeUp 0.5s ease both; }
+        .card-logo { display: flex; align-items: center; justify-content: center; width: 52px; height: 52px; border-radius: 1rem; background: linear-gradient(135deg, var(--indigo), var(--purple)); font-size: 1.5rem; margin: 0 auto 1.5rem; box-shadow: 0 8px 24px rgba(99,102,241,0.35); }
+        .card-title { font-size: 1.5rem; font-weight: 800; text-align: center; margin-bottom: 0.4rem; letter-spacing: -0.03em; }
+        .card-sub { font-size: 0.875rem; color: var(--muted); text-align: center; margin-bottom: 2rem; line-height: 1.6; }
+        .alert { display: flex; align-items: center; gap: 0.75rem; padding: 0.875rem 1rem; border-radius: 0.75rem; font-size: 0.85rem; margin-bottom: 1.5rem; }
+        .alert-error   { background: rgba(239,68,68,0.08);  border: 1px solid rgba(239,68,68,0.25);  color: #fca5a5; animation: shake 0.45s ease; }
+        .alert-success { background: rgba(34,197,94,0.08);  border: 1px solid rgba(34,197,94,0.25);  color: #86efac; }
+        .field-label { display: block; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 0.5rem; }
+        .field-wrap { position: relative; margin-bottom: 1.5rem; }
+        .field-icon { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 0.875rem; pointer-events: none; transition: color 0.2s; }
+        .field-input { width: 100%; padding: 0.875rem 1rem 0.875rem 2.75rem; background: rgba(15,23,42,0.8); border: 1.5px solid var(--border); border-radius: 0.75rem; color: var(--text); font-size: 0.95rem; transition: all 0.25s; outline: none; }
+        .field-input::placeholder { color: rgba(100,116,139,0.6); }
+        .field-input:focus { border-color: var(--indigo); background: rgba(99,102,241,0.05); box-shadow: 0 0 0 3px rgba(99,102,241,0.12); }
+        .field-wrap:focus-within .field-icon { color: #818cf8; }
+        .submit-btn { width: 100%; padding: 0.9rem; border: none; border-radius: 0.875rem; background: linear-gradient(135deg, var(--indigo), var(--purple)); color: white; font-size: 0.95rem; font-weight: 700; cursor: pointer; transition: all 0.25s; box-shadow: 0 4px 20px rgba(99,102,241,0.4); margin-bottom: 1.25rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
+        .submit-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(99,102,241,0.55); }
+        .submit-btn:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+        .back-link { display: flex; align-items: center; justify-content: center; gap: 0.4rem; font-size: 0.82rem; color: var(--muted); text-decoration: none; transition: color 0.2s; }
+        .back-link:hover { color: #818cf8; }
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes shake { 0%,100% { transform: translateX(0); } 20%,60% { transform: translateX(-5px); } 40%,80% { transform: translateX(5px); } }
+    </style>
+</head>
+<body>
+<div class="card">
+    <div class="card-logo">∫</div>
+    <h2 class="card-title">Recuperar contraseña</h2>
+    <p class="card-sub">Ingresa tu email y te enviaremos un enlace para restablecer tu contraseña.</p>
+
+    {% if error %}
+    <div class="alert alert-error"><i class="fas fa-circle-exclamation"></i><span>{{ error }}</span></div>
+    {% endif %}
+
+    {% if sent %}
+    <div class="alert alert-success"><i class="fas fa-circle-check"></i><span>Correo enviado. Revisa tu bandeja de entrada (y spam).</span></div>
+    {% else %}
+    <form method="POST" id="forgotForm">
+        <label class="field-label" for="email">Correo electrónico</label>
+        <div class="field-wrap">
+            <input class="field-input" type="email" id="email" name="email" placeholder="tu@email.com" required>
+            <i class="fas fa-envelope field-icon"></i>
+        </div>
+        <button type="submit" class="submit-btn" id="submitBtn">
+            <i class="fas fa-paper-plane"></i>
+            <span id="btnText">Enviar enlace</span>
+        </button>
+    </form>
+    {% endif %}
+
+    <a href="/" class="back-link"><i class="fas fa-arrow-left"></i> Volver al inicio de sesión</a>
+</div>
+<script>
+    document.getElementById('forgotForm') && document.getElementById('forgotForm').addEventListener('submit', function() {
+        const btn = document.getElementById('submitBtn');
+        btn.disabled = true;
+        document.getElementById('btnText').textContent = 'Enviando...';
+        btn.querySelector('.fa-paper-plane').className = 'fas fa-spinner fa-spin';
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CarlosTech Math AI — Nueva contraseña</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --indigo: #6366f1; --purple: #8b5cf6;
+            --bg: #080d1a; --bg2: #0f172a;
+            --text: #f1f5f9; --muted: #64748b; --border: rgba(148,163,184,0.1);
+        }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2rem; }
+        .card { width: 100%; max-width: 420px; background: var(--bg2); border: 1px solid var(--border); border-radius: 1.25rem; padding: 2.5rem; animation: fadeUp 0.5s ease both; }
+        .card-logo { display: flex; align-items: center; justify-content: center; width: 52px; height: 52px; border-radius: 1rem; background: linear-gradient(135deg, var(--indigo), var(--purple)); font-size: 1.5rem; margin: 0 auto 1.5rem; box-shadow: 0 8px 24px rgba(99,102,241,0.35); }
+        .card-title { font-size: 1.5rem; font-weight: 800; text-align: center; margin-bottom: 0.4rem; letter-spacing: -0.03em; }
+        .card-sub { font-size: 0.875rem; color: var(--muted); text-align: center; margin-bottom: 2rem; }
+        .alert { display: flex; align-items: center; gap: 0.75rem; padding: 0.875rem 1rem; border-radius: 0.75rem; font-size: 0.85rem; margin-bottom: 1.5rem; }
+        .alert-error   { background: rgba(239,68,68,0.08);  border: 1px solid rgba(239,68,68,0.25);  color: #fca5a5; animation: shake 0.45s ease; }
+        .alert-invalid { background: rgba(239,68,68,0.08);  border: 1px solid rgba(239,68,68,0.25);  color: #fca5a5; }
+        .field-label { display: block; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 0.5rem; }
+        .field-wrap { position: relative; margin-bottom: 1.25rem; }
+        .field-icon { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 0.875rem; pointer-events: none; transition: color 0.2s; }
+        .field-input { width: 100%; padding: 0.875rem 2.75rem 0.875rem 2.75rem; background: rgba(15,23,42,0.8); border: 1.5px solid var(--border); border-radius: 0.75rem; color: var(--text); font-size: 0.95rem; transition: all 0.25s; outline: none; }
+        .field-input::placeholder { color: rgba(100,116,139,0.6); }
+        .field-input:focus { border-color: var(--indigo); background: rgba(99,102,241,0.05); box-shadow: 0 0 0 3px rgba(99,102,241,0.12); }
+        .field-wrap:focus-within .field-icon { color: #818cf8; }
+        .toggle-pw { position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--muted); cursor: pointer; font-size: 0.875rem; padding: 0.25rem; transition: color 0.2s; }
+        .toggle-pw:hover { color: var(--text); }
+        .pw-bars { display: flex; gap: 3px; margin: 0.4rem 0 0.25rem; }
+        .pw-bar { flex: 1; height: 3px; border-radius: 2px; background: rgba(255,255,255,0.08); transition: background 0.3s; }
+        .pw-bar.weak { background: #ef4444; } .pw-bar.medium { background: #f59e0b; } .pw-bar.strong { background: #22c55e; }
+        .pw-label { font-size: 0.7rem; color: var(--muted); }
+        .submit-btn { width: 100%; padding: 0.9rem; border: none; border-radius: 0.875rem; background: linear-gradient(135deg, var(--indigo), var(--purple)); color: white; font-size: 0.95rem; font-weight: 700; cursor: pointer; transition: all 0.25s; box-shadow: 0 4px 20px rgba(99,102,241,0.4); margin-top: 0.5rem; margin-bottom: 1.25rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
+        .submit-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(99,102,241,0.55); }
+        .submit-btn:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+        .back-link { display: flex; align-items: center; justify-content: center; gap: 0.4rem; font-size: 0.82rem; color: var(--muted); text-decoration: none; transition: color 0.2s; }
+        .back-link:hover { color: #818cf8; }
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes shake { 0%,100% { transform: translateX(0); } 20%,60% { transform: translateX(-5px); } 40%,80% { transform: translateX(5px); } }
+    </style>
+</head>
+<body>
+<div class="card">
+    <div class="card-logo">∫</div>
+    <h2 class="card-title">Nueva contraseña</h2>
+    <p class="card-sub">Elige una contraseña segura para tu cuenta.</p>
+
+    {% if invalid %}
+    <div class="alert alert-invalid">
+        <i class="fas fa-circle-exclamation"></i>
+        <span>El enlace es inválido o ha expirado. <a href="/forgot" style="color:#818cf8">Solicita uno nuevo</a>.</span>
+    </div>
+    <a href="/" class="back-link"><i class="fas fa-arrow-left"></i> Volver al inicio de sesión</a>
+
+    {% elif error %}
+    <div class="alert alert-error"><i class="fas fa-circle-exclamation"></i><span>{{ error }}</span></div>
+    <form method="POST">
+        <label class="field-label" for="password">Nueva contraseña</label>
+        <div class="field-wrap">
+            <input class="field-input" type="password" id="password" name="password" placeholder="Mínimo 6 caracteres" required oninput="checkStrength(this.value)">
+            <i class="fas fa-lock field-icon"></i>
+            <button type="button" class="toggle-pw" onclick="togglePw()"><i class="fas fa-eye" id="eyeIcon"></i></button>
+        </div>
+        <div class="pw-bars"><div class="pw-bar" id="b1"></div><div class="pw-bar" id="b2"></div><div class="pw-bar" id="b3"></div><div class="pw-bar" id="b4"></div></div>
+        <span class="pw-label" id="pwLabel">Ingresa una contraseña</span>
+        <label class="field-label" style="margin-top:1rem" for="confirm">Confirmar contraseña</label>
+        <div class="field-wrap">
+            <input class="field-input" type="password" id="confirm" name="confirm" placeholder="Repite tu contraseña" required>
+            <i class="fas fa-lock-open field-icon"></i>
+        </div>
+        <button type="submit" class="submit-btn"><i class="fas fa-key"></i> Guardar contraseña</button>
+    </form>
+    <a href="/" class="back-link"><i class="fas fa-arrow-left"></i> Volver al inicio de sesión</a>
+
+    {% else %}
+    <form method="POST" id="resetForm">
+        <label class="field-label" for="password">Nueva contraseña</label>
+        <div class="field-wrap">
+            <input class="field-input" type="password" id="password" name="password" placeholder="Mínimo 6 caracteres" required oninput="checkStrength(this.value)">
+            <i class="fas fa-lock field-icon"></i>
+            <button type="button" class="toggle-pw" onclick="togglePw()"><i class="fas fa-eye" id="eyeIcon"></i></button>
+        </div>
+        <div class="pw-bars"><div class="pw-bar" id="b1"></div><div class="pw-bar" id="b2"></div><div class="pw-bar" id="b3"></div><div class="pw-bar" id="b4"></div></div>
+        <span class="pw-label" id="pwLabel">Ingresa una contraseña</span>
+        <label class="field-label" style="margin-top:1rem" for="confirm">Confirmar contraseña</label>
+        <div class="field-wrap">
+            <input class="field-input" type="password" id="confirm" name="confirm" placeholder="Repite tu contraseña" required>
+            <i class="fas fa-lock-open field-icon"></i>
+        </div>
+        <button type="submit" class="submit-btn" id="submitBtn"><i class="fas fa-key"></i><span id="btnText">Guardar contraseña</span></button>
+    </form>
+    <a href="/" class="back-link"><i class="fas fa-arrow-left"></i> Volver al inicio de sesión</a>
+    {% endif %}
+</div>
+<script>
+    function togglePw() {
+        const inp = document.getElementById('password');
+        const ico = document.getElementById('eyeIcon');
+        inp.type = inp.type === 'password' ? 'text' : 'password';
+        ico.className = inp.type === 'password' ? 'fas fa-eye' : 'fas fa-eye-slash';
+    }
+    function checkStrength(val) {
+        const bars = ['b1','b2','b3','b4'].map(id => document.getElementById(id));
+        const lbl  = document.getElementById('pwLabel');
+        bars.forEach(b => b.className = 'pw-bar');
+        if (!val) { lbl.textContent = 'Ingresa una contraseña'; lbl.style.color = ''; return; }
+        let score = 0;
+        if (val.length >= 6)  score++;
+        if (val.length >= 10) score++;
+        if (/[A-Z]/.test(val) && /[0-9]/.test(val)) score++;
+        if (/[^A-Za-z0-9]/.test(val)) score++;
+        const lvls = [
+            { cls:'weak',   text:'Muy débil',  color:'#ef4444' },
+            { cls:'weak',   text:'Débil',      color:'#ef4444' },
+            { cls:'medium', text:'Media',      color:'#f59e0b' },
+            { cls:'medium', text:'Buena',      color:'#f59e0b' },
+            { cls:'strong', text:'Fuerte',     color:'#22c55e' },
+        ];
+        const lvl = lvls[Math.min(score, 4)];
+        for (let i = 0; i <= score && i < 4; i++) bars[i].classList.add(lvl.cls);
+        lbl.textContent = lvl.text; lbl.style.color = lvl.color;
+    }
+    const form = document.getElementById('resetForm');
+    form && form.addEventListener('submit', function(e) {
+        const pw  = document.getElementById('password').value;
+        const cfm = document.getElementById('confirm').value;
+        if (pw !== cfm) { e.preventDefault(); alert('Las contraseñas no coinciden'); return; }
+        const btn = document.getElementById('submitBtn');
+        btn.disabled = true;
+        document.getElementById('btnText').textContent = 'Guardando...';
+    });
+</script>
+</body>
+</html>

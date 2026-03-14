@@ -9,9 +9,16 @@ from sympy.parsing.sympy_parser import (
     parse_expr, standard_transformations,
     implicit_multiplication_application, convert_xor
 )
-import re, os, time, traceback
+import re, os, time, traceback, sqlite3, secrets, smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from datetime import datetime, timedelta
 from functools import wraps
+from werkzeug.security import generate_password_hash, check_password_hash
+from dotenv import load_dotenv
 import numpy as np
+
+load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'carlostech-secret-2025')
@@ -22,7 +29,102 @@ app.config.update(
     PERMANENT_SESSION_LIFETIME=3600
 )
 
-USERS = {'carlos': 'carlos123', 'admin': 'admin123', 'demo': 'demo123'}
+ADMIN_USER = 'admin'
+ADMIN_HASH = generate_password_hash(os.environ.get('ADMIN_PASSWORD', 'admin123'))
+
+DB_PATH = os.path.join(os.path.dirname(__file__), 'users.db')
+
+def get_db():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+def init_db():
+    with get_db() as conn:
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS users (
+                id       INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT    UNIQUE NOT NULL,
+                email    TEXT    UNIQUE NOT NULL,
+                password TEXT    NOT NULL,
+                role     TEXT    NOT NULL DEFAULT 'student',
+                created  TEXT    NOT NULL DEFAULT (datetime('now'))
+            )
+        ''')
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS password_resets (
+                id      INTEGER PRIMARY KEY AUTOINCREMENT,
+                email   TEXT NOT NULL,
+                token   TEXT UNIQUE NOT NULL,
+                expiry  TEXT NOT NULL
+            )
+        ''')
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS history (
+                id      INTEGER PRIMARY KEY AUTOINCREMENT,
+                user    TEXT NOT NULL,
+                tool    TEXT NOT NULL,
+                input   TEXT NOT NULL,
+                result  TEXT NOT NULL,
+                method  TEXT NOT NULL,
+                created TEXT NOT NULL DEFAULT (datetime('now'))
+            )
+        ''')
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS shares (
+                id      INTEGER PRIMARY KEY AUTOINCREMENT,
+                token   TEXT UNIQUE NOT NULL,
+                user    TEXT NOT NULL,
+                tool    TEXT NOT NULL,
+                input   TEXT NOT NULL,
+                result  TEXT NOT NULL,
+                method  TEXT NOT NULL,
+                steps   TEXT NOT NULL,
+                views   INTEGER NOT NULL DEFAULT 0,
+                created TEXT NOT NULL DEFAULT (datetime('now'))
+            )
+        ''')
+        # Migrar columna views si no existe
+        try:
+            conn.execute("ALTER TABLE shares ADD COLUMN views INTEGER NOT NULL DEFAULT 0")
+        except Exception:
+            pass
+        conn.commit()
+
+init_db()
+
+# ── Config email (variables de entorno) ──────────────────────────
+MAIL_HOST = os.environ.get('MAIL_HOST', 'smtp.gmail.com')
+MAIL_PORT = int(os.environ.get('MAIL_PORT', 587))
+MAIL_USER = os.environ.get('MAIL_USER', '')   # tu Gmail
+MAIL_PASS = os.environ.get('MAIL_PASS', '')   # contraseña de aplicación
+APP_URL   = os.environ.get('APP_URL', 'http://localhost:10000')
+
+def send_reset_email(to_email, token):
+    link = f"{APP_URL}/reset/{token}"
+    msg  = MIMEMultipart('alternative')
+    msg['Subject'] = 'Recuperar contraseña — CarlosTech Math AI'
+    msg['From']    = f'CarlosTech Math AI <{MAIL_USER}>'
+    msg['To']      = to_email
+    html = f"""
+    <div style="font-family:sans-serif;max-width:480px;margin:auto;background:#0f172a;color:#f1f5f9;border-radius:12px;padding:2rem;">
+        <div style="text-align:center;margin-bottom:1.5rem;">
+            <div style="display:inline-block;background:linear-gradient(135deg,#6366f1,#8b5cf6);border-radius:12px;padding:0.75rem 1.25rem;font-size:1.5rem;">∫</div>
+            <h2 style="margin-top:1rem;letter-spacing:-0.03em;">Recuperar contraseña</h2>
+        </div>
+        <p style="color:#94a3b8;line-height:1.7;">Haz clic en el botón para restablecer tu contraseña. El enlace expira en <strong style="color:#f1f5f9;">30 minutos</strong>.</p>
+        <div style="text-align:center;margin:2rem 0;">
+            <a href="{link}" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;text-decoration:none;padding:0.875rem 2rem;border-radius:10px;font-weight:700;display:inline-block;">Restablecer contraseña</a>
+        </div>
+        <p style="color:#64748b;font-size:0.8rem;">Si no solicitaste esto, ignora este correo. Tu contraseña no cambiará.</p>
+        <p style="color:#64748b;font-size:0.75rem;margin-top:1rem;word-break:break-all;">Enlace: {link}</p>
+    </div>
+    """
+    msg.attach(MIMEText(html, 'html'))
+    with smtplib.SMTP(MAIL_HOST, MAIL_PORT) as s:
+        s.starttls()
+        s.login(MAIL_USER, MAIL_PASS)
+        s.sendmail(MAIL_USER, to_email, msg.as_string())
 
 x, t, u, n = symbols('x t u n')
 
@@ -687,22 +789,124 @@ def login_required(f):
 
 @app.route("/", methods=["GET", "POST"])
 def login():
-    if request.method == "POST":
-        u = request.form.get("username", "").strip()
-        p = request.form.get("password", "").strip()
-        if USERS.get(u) == p:
-            session['user'] = u
-            return redirect(url_for('dashboard'))
-        return render_template("login.html", error="Credenciales inválidas")
     if 'user' in session:
         return redirect(url_for('dashboard'))
+    if request.method == "POST":
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "").strip()
+        # Admin hardcodeado
+        if username == ADMIN_USER and check_password_hash(ADMIN_HASH, password):
+            session['user']  = ADMIN_USER
+            session['email'] = 'admin@carlostech.ai'
+            session['role']  = 'admin'
+            return redirect(url_for('dashboard'))
+        # Usuarios de la base de datos
+        with get_db() as conn:
+            row = conn.execute("SELECT * FROM users WHERE username=?", (username,)).fetchone()
+        if row and check_password_hash(row['password'], password):
+            session['user']  = row['username']
+            session['email'] = row['email']
+            session['role']  = row['role']
+            session['uid']   = row['id']
+            return redirect(url_for('dashboard'))
+        return render_template("login.html", error="Usuario o contraseña incorrectos")
     return render_template("login.html")
+
+
+@app.route("/forgot", methods=["GET", "POST"])
+def forgot():
+    if 'user' in session:
+        return redirect(url_for('dashboard'))
+    if request.method == "POST":
+        email = request.form.get("email", "").strip().lower()
+        with get_db() as conn:
+            row = conn.execute("SELECT * FROM users WHERE email=?", (email,)).fetchone()
+        if row:
+            token  = secrets.token_urlsafe(32)
+            expiry = (datetime.utcnow() + timedelta(minutes=30)).isoformat()
+            with get_db() as conn:
+                conn.execute("DELETE FROM password_resets WHERE email=?", (email,))
+                conn.execute("INSERT INTO password_resets (email, token, expiry) VALUES (?,?,?)", (email, token, expiry))
+                conn.commit()
+            try:
+                send_reset_email(email, token)
+            except Exception as e:
+                print(f"[MAIL] Error: {e}")
+                return render_template("forgot.html", error="No se pudo enviar el correo. Verifica la configuración SMTP.")
+        # Siempre mostrar éxito (no revelar si el email existe)
+        return render_template("forgot.html", sent=True)
+    return render_template("forgot.html")
+
+
+@app.route("/reset/<token>", methods=["GET", "POST"])
+def reset(token):
+    if 'user' in session:
+        return redirect(url_for('dashboard'))
+    with get_db() as conn:
+        row = conn.execute("SELECT * FROM password_resets WHERE token=?", (token,)).fetchone()
+    if not row or datetime.utcnow() > datetime.fromisoformat(row['expiry']):
+        return render_template("reset.html", invalid=True)
+    if request.method == "POST":
+        password = request.form.get("password", "").strip()
+        confirm  = request.form.get("confirm",  "").strip()
+        if len(password) < 6:
+            return render_template("reset.html", error="La contraseña debe tener al menos 6 caracteres")
+        if password != confirm:
+            return render_template("reset.html", error="Las contraseñas no coinciden")
+        with get_db() as conn:
+            conn.execute("UPDATE users SET password=? WHERE email=?", (generate_password_hash(password), row['email']))
+            conn.execute("DELETE FROM password_resets WHERE token=?", (token,))
+            conn.commit()
+        return redirect(url_for('login') + '?reset=1')
+    return render_template("reset.html")
+
+
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    if 'user' in session:
+        return redirect(url_for('dashboard'))
+    if request.method == "POST":
+        username = request.form.get("username", "").strip()
+        email    = request.form.get("email",    "").strip().lower()
+        password = request.form.get("password", "").strip()
+        confirm  = request.form.get("confirm",  "").strip()
+        if not username or not email or not password:
+            return render_template("register.html", error="Todos los campos son obligatorios")
+        if len(username) < 3:
+            return render_template("register.html", error="El usuario debe tener al menos 3 caracteres")
+        if len(password) < 6:
+            return render_template("register.html", error="La contraseña debe tener al menos 6 caracteres")
+        if password != confirm:
+            return render_template("register.html", error="Las contraseñas no coinciden")
+        if '@' not in email:
+            return render_template("register.html", error="Email inválido")
+        if username == ADMIN_USER:
+            return render_template("register.html", error="Ese nombre de usuario no está disponible")
+        try:
+            with get_db() as conn:
+                conn.execute(
+                    "INSERT INTO users (username, email, password) VALUES (?,?,?)",
+                    (username, email, generate_password_hash(password))
+                )
+                conn.commit()
+            return redirect(url_for('login') + '?registered=1')
+        except sqlite3.IntegrityError as e:
+            if 'username' in str(e):
+                return render_template("register.html", error="Ese nombre de usuario ya existe")
+            if 'email' in str(e):
+                return render_template("register.html", error="Ese email ya está registrado")
+            return render_template("register.html", error="Error al registrar")
+    return render_template("register.html")
 
 
 @app.route("/app")
 @login_required
 def dashboard():
-    return render_template("index.html")
+    return render_template("index.html",
+        username=session.get('user', 'admin'),
+        email=session.get('email', 'admin@carlostech.ai'),
+        role=session.get('role', 'admin')
+    )
 
 
 @app.route("/logout")
@@ -711,7 +915,114 @@ def logout():
     return redirect(url_for('login'))
 
 
-# ============ API ============
+def admin_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if session.get('role') != 'admin':
+            return jsonify({"error": "Acceso denegado"}), 403
+        return f(*args, **kwargs)
+    return decorated
+
+
+@app.route("/admin")
+@login_required
+def admin_panel():
+    if session.get('role') != 'admin':
+        return redirect(url_for('dashboard'))
+    with get_db() as conn:
+        users = conn.execute("SELECT id,username,email,role,created FROM users ORDER BY created DESC").fetchall()
+        total_calcs = conn.execute("SELECT COUNT(*) FROM history").fetchone()[0]
+        total_shares = conn.execute("SELECT COUNT(*) FROM shares").fetchone()[0]
+        recent = conn.execute(
+            "SELECT user,tool,input,result,created FROM history ORDER BY created DESC LIMIT 20"
+        ).fetchall()
+    return render_template("admin.html",
+        users=users, total_calcs=total_calcs,
+        total_shares=total_shares, recent=recent,
+        username=session['user'], email=session.get('email',''), role='admin'
+    )
+
+
+@app.route("/api/admin/delete-user/<int:uid>", methods=["DELETE"])
+@login_required
+@admin_required
+def admin_delete_user(uid):
+    with get_db() as conn:
+        conn.execute("DELETE FROM users WHERE id=?", (uid,))
+        conn.execute("DELETE FROM history WHERE user=(SELECT username FROM users WHERE id=?)", (uid,))
+        conn.commit()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/history", methods=["GET"])
+@login_required
+def api_history_get():
+    with get_db() as conn:
+        rows = conn.execute(
+            "SELECT tool,input,result,method,created FROM history WHERE user=? ORDER BY created DESC LIMIT 50",
+            (session['user'],)
+        ).fetchall()
+    # Enriquecer con vistas de shares del mismo usuario
+    result_list = [dict(r) for r in rows]
+    with get_db() as conn:
+        shares_views = conn.execute(
+            "SELECT input, SUM(views) as total_views FROM shares WHERE user=? GROUP BY input",
+            (session['user'],)
+        ).fetchall()
+    views_map = {r['input']: r['total_views'] for r in shares_views}
+    for item in result_list:
+        item['views'] = views_map.get(item['input'], 0)
+    return jsonify(result_list)
+
+
+@app.route("/api/history", methods=["POST"])
+@login_required
+def api_history_save():
+    data = request.json or {}
+    with get_db() as conn:
+        conn.execute(
+            "INSERT INTO history (user,tool,input,result,method) VALUES (?,?,?,?,?)",
+            (session['user'], data.get('tool',''), data.get('input',''),
+             data.get('result',''), data.get('method',''))
+        )
+        conn.commit()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/history", methods=["DELETE"])
+@login_required
+def api_history_clear():
+    with get_db() as conn:
+        conn.execute("DELETE FROM history WHERE user=?", (session['user'],))
+        conn.commit()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/cambiar-password", methods=["POST"])
+@login_required
+def api_cambiar_password():
+    if session.get('role') == 'admin' and session.get('user') == ADMIN_USER:
+        return jsonify({"error": "El admin usa variables de entorno para cambiar su contraseña"}), 400
+    data = request.json or {}
+    actual  = data.get('actual', '').strip()
+    nueva   = data.get('nueva', '').strip()
+    confirm = data.get('confirm', '').strip()
+    if not actual or not nueva:
+        return jsonify({"error": "Todos los campos son obligatorios"}), 400
+    if len(nueva) < 6:
+        return jsonify({"error": "La nueva contraseña debe tener al menos 6 caracteres"}), 400
+    if nueva != confirm:
+        return jsonify({"error": "Las contraseñas no coinciden"}), 400
+    with get_db() as conn:
+        row = conn.execute("SELECT password FROM users WHERE username=?", (session['user'],)).fetchone()
+    if not row or not check_password_hash(row['password'], actual):
+        return jsonify({"error": "Contraseña actual incorrecta"}), 400
+    with get_db() as conn:
+        conn.execute("UPDATE users SET password=? WHERE username=?",
+                     (generate_password_hash(nueva), session['user']))
+        conn.commit()
+    return jsonify({"ok": True})
+
 
 @app.route("/api/resolver", methods=["POST"])
 @login_required
@@ -797,18 +1108,259 @@ def api_derivada():
     try:
         data = request.json or {}
         expr_text = data.get("expresion", "").strip()
+        orden = int(data.get("orden", 1))
         if not expr_text:
-            return jsonify({"error": "Expresión vacía"}), 400
-        expr = parse_expression(expr_text)
-        result = diff(expr, x)
-        return jsonify({
-            "success": True,
-            "input": latex(expr),
-            "result": latex(result),
-            "steps": [f"\\frac{{d}}{{dx}}\\left[{latex(expr)}\\right] = {latex(result)}"]
-        })
+            return jsonify({"error": "Expresion vacia"}), 400
+        expr   = parse_expression(expr_text)
+        result = diff(expr, x, orden)
+        steps  = _deriv_steps(expr, result, orden)
+        return jsonify({"success": True, "input": latex(expr), "result": latex(result), "steps": steps})
     except Exception as e:
         return jsonify({"success": False, "error": str(e), "steps": []}), 400
+
+
+@app.route("/api/limite", methods=["POST"])
+@login_required
+def api_limite():
+    try:
+        data = request.json or {}
+        expr_text = data.get("expresion", "").strip()
+        punto_str = data.get("punto", "0")
+        direccion = data.get("direccion", "+-")
+        if not expr_text:
+            return jsonify({"error": "Expresion vacia"}), 400
+        expr    = parse_expression(expr_text)
+        punto_s = sympify(str(punto_str), locals=LOCAL_DICT)
+        result  = limit(expr, x, punto_s, direccion)
+        steps   = _limit_steps(expr, result, punto_s, direccion)
+        return jsonify({"success": True, "input": latex(expr), "punto": latex(punto_s),
+                        "result": latex(result), "steps": steps})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e), "steps": []}), 400
+
+
+@app.route("/api/taylor", methods=["POST"])
+@login_required
+def api_taylor():
+    try:
+        data = request.json or {}
+        expr_text = data.get("expresion", "").strip()
+        punto_str = data.get("punto", "0")
+        orden     = int(data.get("orden", 6))
+        if not expr_text:
+            return jsonify({"error": "Expresion vacia"}), 400
+        expr    = parse_expression(expr_text)
+        punto_s = sympify(str(punto_str), locals=LOCAL_DICT)
+        serie   = series(expr, x, punto_s, orden)
+        polinomio = serie.removeO()
+        steps   = _taylor_steps(expr, serie, polinomio, punto_s, orden)
+        return jsonify({"success": True, "input": latex(expr), "punto": latex(punto_s),
+                        "orden": orden, "result": latex(polinomio), "serie": latex(serie), "steps": steps})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e), "steps": []}), 400
+
+
+@app.route("/api/ode", methods=["POST"])
+@login_required
+def api_ode():
+    try:
+        data = request.json or {}
+        expr_text = data.get("expresion", "").strip()
+        if not expr_text:
+            return jsonify({"error": "Expresion vacia"}), 400
+        y_fn = Function('y')
+        expr_clean = clean_latex(expr_text)
+        expr_clean = re.sub(r"y''", "Derivative(y(x),x,2)", expr_clean)
+        expr_clean = re.sub(r"y'",  "Derivative(y(x),x)",   expr_clean)
+        expr_clean = re.sub(r"\by\b", "y(x)", expr_clean)
+        ode_local  = {**LOCAL_DICT, 'y': y_fn, 'Derivative': Derivative}
+        ode_expr   = sympify(expr_clean, locals=ode_local)
+        if not isinstance(ode_expr, Eq):
+            ode_expr = Eq(ode_expr, 0)
+        sol   = dsolve(ode_expr, y_fn(x))
+        steps = _ode_steps(ode_expr, sol)
+        return jsonify({"success": True, "input": latex(ode_expr), "result": latex(sol), "steps": steps})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e), "steps": []}), 400
+
+
+# ── Generadores de pasos ─────────────────────────────────────────
+
+def _step(title, type_, text, math=None):
+    d = {"title": title, "type": type_, "text": text}
+    if math:
+        d["math"] = math
+    return d
+
+
+def _deriv_steps(expr, result, orden):
+    el = latex(expr)
+    rl = latex(result)
+    ord_str = {1: "primera", 2: "segunda", 3: "tercera"}.get(orden, f"orden {orden}")
+    lhs = (rf"\frac{{d^{{{orden}}}}}{{dx^{{{orden}}}}}\left[{el}\right]"
+           if orden > 1 else rf"\frac{{d}}{{dx}}\left[{el}\right]")
+    steps = [
+        _step("Plantear la derivada", "identify",
+              f"Calculamos la derivada de {ord_str} orden:", lhs)
+    ]
+    if expr.is_polynomial(x):
+        terms = Add.make_args(expand(expr))
+        partials = [rf"\frac{{d}}{{dx}}[{latex(t)}]={latex(diff(t,x))}" for t in terms]
+        steps += [
+            _step("Regla de la potencia", "method",
+                  "Para cada termino xn: d/dx[xn] = n*x^(n-1)",
+                  rf"\frac{{d}}{{dx}}[x^n]=n\cdot x^{{n-1}}"),
+            _step("Derivar termino a termino", "calc",
+                  "La derivada de una suma es la suma de las derivadas:",
+                  r"\qquad".join(partials)),
+        ]
+    elif expr.has(sin) or expr.has(cos):
+        steps.append(_step("Reglas trigonometricas", "method",
+                           "Aplicamos las reglas de derivacion trigonometrica:",
+                           rf"\frac{{d}}{{dx}}[\sin x]=\cos x\qquad\frac{{d}}{{dx}}[\cos x]=-\sin x"))
+    elif expr.has(exp):
+        steps.append(_step("Regla exponencial", "method",
+                           "La exponencial es su propia derivada:",
+                           rf"\frac{{d}}{{dx}}[e^{{ax}}]=a\cdot e^{{ax}}"))
+    elif expr.has(log):
+        steps.append(_step("Regla logaritmo", "method",
+                           "Derivada del logaritmo natural:",
+                           rf"\frac{{d}}{{dx}}[\ln x]=\frac{{1}}{{x}}"))
+    steps.append(_step("Resultado", "result",
+                       f"La derivada de {ord_str} orden es:",
+                       rf"\boxed{{{lhs}={rl}}}"))
+    return steps
+
+
+def _limit_steps(expr, result, punto, direccion):
+    el  = latex(expr)
+    rl  = latex(result)
+    pl  = latex(punto)
+    sup = {"+": "^+", "-": "^-", "+-": ""}.get(str(direccion), "")
+    steps = [
+        _step("Plantear el limite", "identify",
+              f"Calculamos el limite cuando x tiende a {pl}:",
+              rf"\lim_{{x\to {pl}{sup}}}{el}")
+    ]
+    try:
+        direct = simplify(expr.subs(x, punto))
+        if direct.is_finite and direct not in (zoo, nan):
+            steps.append(_step("Sustitucion directa", "calc",
+                               f"Sustituimos x = {pl} directamente:",
+                               rf"{el}\Big|_{{x={pl}}}={latex(direct)}"))
+        else:
+            steps.append(_step("Forma indeterminada", "calc",
+                               "La sustitucion directa da una forma indeterminada:",
+                               rf"{el}\Big|_{{x={pl}}}={latex(direct)}"))
+            num, den = fraction(expr)
+            if den != 1:
+                steps.append(_step("Regla de L'Hopital", "method",
+                                   "Derivamos numerador y denominador por separado:",
+                                   rf"\lim_{{x\to{pl}}}\frac{{{latex(num)}}}{{{latex(den)}}}="
+                                   rf"\lim_{{x\to{pl}}}\frac{{{latex(diff(num,x))}}}{{{latex(diff(den,x))}}}"))
+    except Exception:
+        pass
+    steps.append(_step("Resultado", "result", "El valor del limite es:",
+                       rf"\boxed{{\lim_{{x\to {pl}{sup}}}{el}={rl}}}"))
+    return steps
+
+
+def _taylor_steps(expr, serie, polinomio, punto, orden):
+    el = latex(expr)
+    pl = latex(punto)
+    steps = [
+        _step("Plantear la serie", "identify",
+              f"Expandimos f(x) en serie de Taylor alrededor de x={pl} hasta orden {orden}:",
+              rf"f(x)=\sum_{{n=0}}^{{\infty}}\frac{{f^{{(n)}}({pl})}}{{n!}}(x-{pl})^n"),
+        _step("Formula de coeficientes", "method",
+              "Cada coeficiente se obtiene evaluando la n-esima derivada en el punto:",
+              rf"a_n=\frac{{f^{{(n)}}({pl})}}{{n!}}"),
+    ]
+    deriv_vals = []
+    f_val = expr
+    for n in range(min(5, orden)):
+        val = simplify(f_val.subs(x, punto))
+        deriv_vals.append(rf"f^{{({n})}}({pl})={latex(val)}")
+        f_val = diff(f_val, x)
+    steps += [
+        _step("Derivadas en el punto", "calc",
+              "Evaluamos las primeras derivadas en el punto de expansion:",
+              r"\qquad".join(deriv_vals)),
+        _step("Polinomio de Taylor", "calc",
+              f"El polinomio de Taylor de grado {orden-1} es:",
+              latex(polinomio)),
+        _step("Serie con termino de error", "result",
+              "La serie completa con el termino O(x^n) es:",
+              rf"\boxed{{{latex(serie)}}}"),
+    ]
+    return steps
+
+
+def _ode_steps(ode_expr, sol):
+    steps = [
+        _step("Plantear la ODE", "identify",
+              "Tenemos la siguiente ecuacion diferencial ordinaria:",
+              latex(ode_expr))
+    ]
+    hint = "general"
+    try:
+        hint = classify_ode(ode_expr, Function('y')(x))[0]
+    except Exception:
+        pass
+    tipo_map = {
+        "separable":       ("Separable", "Separamos variables: f(y)dy = g(x)dx e integramos ambos lados."),
+        "1st_linear":      ("Lineal 1er orden", "Forma: y' + P(x)y = Q(x). Factor integrante: mu = e^(int P dx)."),
+        "Bernoulli":       ("Bernoulli", "Sustituimos v = y^(1-n) para linealizar."),
+        "nth_linear_constant_coeff_homogeneous":
+                           ("Lineal homogenea coef. constantes", "Resolvemos la ecuacion caracteristica."),
+    }
+    nombre, desc = tipo_map.get(hint, ("General", "Aplicamos el metodo de resolucion adecuado."))
+    steps += [
+        _step(f"Tipo: {nombre}", "method", desc,
+              rf"\text{{Clasificacion: }}\texttt{{{hint}}}"),
+        _step("Resolver la ODE", "calc",
+              "Aplicamos el metodo y obtenemos la solucion general:",
+              latex(sol)),
+        _step("Solucion general", "result",
+              "La solucion general (C1, C2 son constantes arbitrarias):",
+              rf"\boxed{{{latex(sol)}}}"),
+    ]
+    return steps
+
+
+import json as _json
+
+@app.route("/api/compartir", methods=["POST"])
+@login_required
+def api_compartir():
+    try:
+        data   = request.json or {}
+        token  = secrets.token_urlsafe(10)
+        with get_db() as conn:
+            conn.execute(
+                "INSERT INTO shares (token,user,tool,input,result,method,steps) VALUES (?,?,?,?,?,?,?)",
+                (token, session['user'], data.get('tool',''), data.get('input',''),
+                 data.get('result',''), data.get('method',''), _json.dumps(data.get('steps',[])))
+            )
+            conn.commit()
+        return jsonify({"url": f"{APP_URL}/s/{token}"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/s/<token>")
+def share_view(token):
+    with get_db() as conn:
+        row = conn.execute("SELECT * FROM shares WHERE token=?", (token,)).fetchone()
+    if not row:
+        return "Solución no encontrada o expirada.", 404
+    # Incrementar vistas (solo si no es el propio autor)
+    if session.get('user') != row['user']:
+        with get_db() as conn:
+            conn.execute("UPDATE shares SET views = views + 1 WHERE token=?", (token,))
+            conn.commit()
+    steps = _json.loads(row['steps'])
+    return render_template("share.html", row=row, steps=steps)
 
 
 @app.errorhandler(404)

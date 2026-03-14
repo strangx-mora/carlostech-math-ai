@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Admin | CarlosTech Math AI</title>
+    <meta name="robots" content="noindex">
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .admin-wrap { max-width: 1100px; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
+        .admin-topbar { display:flex; align-items:center; justify-content:space-between; margin-bottom:2rem; flex-wrap:wrap; gap:1rem; }
+        .admin-title { font-size:1.4rem; font-weight:800; color:#e2e8f0; display:flex; align-items:center; gap:.6rem; }
+        .admin-title i { color:#f59e0b; }
+        .admin-back { display:inline-flex; align-items:center; gap:.4rem; padding:.5rem 1rem; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.08); border-radius:.625rem; color:#94a3b8; font-size:.82rem; font-weight:600; text-decoration:none; transition:all .2s; }
+        .admin-back:hover { background:rgba(255,255,255,.09); color:#e2e8f0; }
+        .stats-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:1rem; margin-bottom:2rem; }
+        .stat-box { background:#1e293b; border:1px solid rgba(255,255,255,.07); border-radius:12px; padding:1.25rem 1.5rem; }
+        .stat-box-val { font-size:2rem; font-weight:800; background:linear-gradient(135deg,#60a5fa,#a78bfa); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; line-height:1; }
+        .stat-box-lbl { font-size:.72rem; color:#64748b; text-transform:uppercase; letter-spacing:.07em; margin-top:.35rem; }
+        .admin-section { background:#1e293b; border:1px solid rgba(255,255,255,.07); border-radius:14px; overflow:hidden; margin-bottom:1.5rem; }
+        .admin-section-header { padding:1rem 1.5rem; border-bottom:1px solid rgba(255,255,255,.07); display:flex; align-items:center; gap:.5rem; font-size:.9rem; font-weight:700; color:#e2e8f0; }
+        .admin-section-header i { color:#818cf8; }
+        table { width:100%; border-collapse:collapse; }
+        th { padding:.75rem 1.25rem; text-align:left; font-size:.7rem; text-transform:uppercase; letter-spacing:.07em; color:#64748b; border-bottom:1px solid rgba(255,255,255,.06); }
+        td { padding:.875rem 1.25rem; font-size:.85rem; color:#cbd5e1; border-bottom:1px solid rgba(255,255,255,.04); }
+        tr:last-child td { border-bottom:none; }
+        tr:hover td { background:rgba(255,255,255,.02); }
+        .role-badge { font-size:.65rem; font-weight:700; padding:.18rem .55rem; border-radius:.3rem; }
+        .role-admin { background:rgba(245,158,11,.12); color:#fbbf24; }
+        .role-student { background:rgba(99,102,241,.12); color:#a5b4fc; }
+        .btn-del { background:rgba(239,68,68,.08); border:1px solid rgba(239,68,68,.2); color:#fca5a5; border-radius:.5rem; padding:.35rem .75rem; font-size:.75rem; font-weight:600; cursor:pointer; transition:all .2s; }
+        .btn-del:hover { background:rgba(239,68,68,.18); }
+        .tool-tag { font-size:.65rem; font-weight:700; padding:.15rem .5rem; border-radius:.3rem; background:rgba(139,92,246,.12); color:#a78bfa; }
+        .truncate { max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        @media(max-width:640px){ th,td{ padding:.6rem .75rem; } .truncate{ max-width:120px; } }
+    </style>
+</head>
+<body>
+<div class="admin-wrap">
+    <div class="admin-topbar">
+        <div class="admin-title"><i class="fas fa-shield-halved"></i> Panel de Administración</div>
+        <a href="/app" class="admin-back"><i class="fas fa-arrow-left"></i> Volver a la app</a>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-grid">
+        <div class="stat-box">
+            <div class="stat-box-val">{{ users|length }}</div>
+            <div class="stat-box-lbl">Usuarios registrados</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-box-val">{{ total_calcs }}</div>
+            <div class="stat-box-lbl">Cálculos totales</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-box-val">{{ total_shares }}</div>
+            <div class="stat-box-lbl">Soluciones compartidas</div>
+        </div>
+    </div>
+
+    <!-- Usuarios -->
+    <div class="admin-section">
+        <div class="admin-section-header"><i class="fas fa-users"></i> Usuarios</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th><th>Usuario</th><th>Email</th><th>Rol</th><th>Registrado</th><th>Acción</th>
+                </tr>
+            </thead>
+            <tbody id="users-tbody">
+            {% for u in users %}
+            <tr id="row-{{ u['id'] }}">
+                <td style="color:#475569;">#{{ u['id'] }}</td>
+                <td style="font-weight:700;">{{ u['username'] }}</td>
+                <td style="color:#94a3b8;">{{ u['email'] }}</td>
+                <td><span class="role-badge role-{{ u['role'] }}">{{ u['role'] }}</span></td>
+                <td style="color:#64748b;">{{ u['created'][:10] }}</td>
+                <td>
+                    <button class="btn-del" onclick="deleteUser({{ u['id'] }}, '{{ u['username'] }}')">
+                        <i class="fas fa-trash"></i> Eliminar
+                    </button>
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6" style="text-align:center;color:#475569;padding:2rem;">No hay usuarios registrados</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Actividad reciente -->
+    <div class="admin-section">
+        <div class="admin-section-header"><i class="fas fa-clock-rotate-left"></i> Actividad reciente (últimos 20)</div>
+        <table>
+            <thead>
+                <tr><th>Usuario</th><th>Herramienta</th><th>Expresión</th><th>Resultado</th><th>Fecha</th></tr>
+            </thead>
+            <tbody>
+            {% for r in recent %}
+            <tr>
+                <td style="font-weight:600;">{{ r['user'] }}</td>
+                <td><span class="tool-tag">{{ r['tool'] }}</span></td>
+                <td class="truncate" title="{{ r['input'] }}">{{ r['input'] }}</td>
+                <td class="truncate" title="{{ r['result'] }}">{{ r['result'] }}</td>
+                <td style="color:#64748b;white-space:nowrap;">{{ r['created'][:16] }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5" style="text-align:center;color:#475569;padding:2rem;">Sin actividad registrada</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+function deleteUser(id, name) {
+    if (!confirm(`¿Eliminar al usuario "${name}"? Esta acción no se puede deshacer.`)) return;
+    fetch(`/api/admin/delete-user/${id}`, { method: 'DELETE' })
+        .then(r => r.json())
+        .then(d => {
+            if (d.ok) {
+                document.getElementById('row-' + id).remove();
+            } else {
+                alert('Error al eliminar');
+            }
+        });
+}
+</script>
+</body>
+</html>
