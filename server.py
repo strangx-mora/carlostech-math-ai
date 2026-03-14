@@ -9,14 +9,17 @@ from sympy.parsing.sympy_parser import (
     parse_expr, standard_transformations,
     implicit_multiplication_application, convert_xor
 )
-import re, os, time, traceback, sqlite3, secrets, smtplib
+import re, os, time, traceback, sqlite3, secrets, smtplib, threading
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timedelta
 from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 import numpy as np
+import json as _json
 
 load_dotenv()
 
@@ -28,6 +31,15 @@ app.config.update(
     SESSION_COOKIE_SECURE=False,
     PERMANENT_SESSION_LIFETIME=3600
 )
+
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=[],
+    storage_uri="memory://"
+)
+
+SOLVER_TIMEOUT = int(os.environ.get('SOLVER_TIMEOUT', 12))
 
 ADMIN_USER = 'admin'
 ADMIN_HASH = generate_password_hash(os.environ.get('ADMIN_PASSWORD', 'admin123'))
@@ -67,6 +79,16 @@ def init_db():
                 input   TEXT NOT NULL,
                 result  TEXT NOT NULL,
                 method  TEXT NOT NULL,
+                created TEXT NOT NULL DEFAULT (datetime('now'))
+            )
+        ''')
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS cache (
+                key     TEXT PRIMARY KEY,
+                result  TEXT NOT NULL,
+                method  TEXT NOT NULL,
+                steps   TEXT NOT NULL,
+                hits    INTEGER NOT NULL DEFAULT 1,
                 created TEXT NOT NULL DEFAULT (datetime('now'))
             )
         ''')
@@ -1024,8 +1046,68 @@ def api_cambiar_password():
     return jsonify({"ok": True})
 
 
+# ── Helpers de caché ────────────────────────────────────────────
+
+def cache_key(expr_text, a, b):
+    return f"{expr_text.strip()}|{a}|{b}"
+
+def cache_get(key):
+    with get_db() as conn:
+        row = conn.execute("SELECT result, method, steps FROM cache WHERE key=?", (key,)).fetchone()
+        if row:
+            conn.execute("UPDATE cache SET hits = hits + 1 WHERE key=?", (key,))
+            conn.commit()
+    return dict(row) if row else None
+
+def cache_set(key, result, method, steps):
+    with get_db() as conn:
+        conn.execute(
+            "INSERT OR REPLACE INTO cache (key, result, method, steps) VALUES (?,?,?,?)",
+            (key, result, method, _json.dumps(steps))
+        )
+        conn.commit()
+
+# ── Solver con timeout ───────────────────────────────────────────
+
+def solve_with_timeout(expr_text, limits, timeout=SOLVER_TIMEOUT):
+    result_container = {}
+
+    def target():
+        try:
+            solver = IntegralSolver(expr_text, limits=limits)
+            solver.solve()
+            result_container['resp'] = solver.get_response()
+        except Exception as e:
+            result_container['resp'] = {
+                "success": False,
+                "error": str(e),
+                "steps": [],
+                "input": expr_text,
+                "result": "",
+                "method_detected": "",
+                "computation_time": f"{timeout}s"
+            }
+
+    t = threading.Thread(target=target, daemon=True)
+    t.start()
+    t.join(timeout)
+
+    if t.is_alive():
+        return {
+            "success": False,
+            "error": f"El cálculo tardó más de {timeout}s. Intenta simplificar la expresión.",
+            "steps": [],
+            "input": expr_text,
+            "result": "",
+            "method_detected": "Timeout",
+            "computation_time": f"{timeout}s"
+        }
+    return result_container.get('resp', {"success": False, "error": "Error desconocido", "steps": []})
+
+
 @app.route("/api/resolver", methods=["POST"])
 @login_required
+@limiter.limit("30 per minute; 5 per second")
 def api_resolver():
     try:
         data = request.json or {}
@@ -1043,9 +1125,27 @@ def api_resolver():
             except:
                 pass
 
-        solver = IntegralSolver(expr_text, limits=limits)
-        solver.solve()
-        resp = solver.get_response()
+        # Buscar en caché
+        ck = cache_key(expr_text, a, b)
+        cached = cache_get(ck)
+        if cached:
+            print(f"[CACHE] Hit: {ck}")
+            return jsonify({
+                "success": True,
+                "input": expr_text,
+                "result": cached['result'],
+                "method_detected": cached['method'] + " (caché)",
+                "steps": _json.loads(cached['steps']),
+                "computation_time": "0.001s",
+                "cached": True
+            })
+
+        resp = solve_with_timeout(expr_text, limits)
+
+        # Guardar en caché si fue exitoso
+        if resp.get('success'):
+            cache_set(ck, resp['result'], resp['method_detected'], resp['steps'])
+
         return jsonify(resp), 200 if resp["success"] else 400
 
     except Exception as e:
@@ -1055,6 +1155,7 @@ def api_resolver():
 
 @app.route("/api/graficar", methods=["POST"])
 @login_required
+@limiter.limit("20 per minute")
 def api_graficar():
     try:
         data = request.json or {}
@@ -1104,6 +1205,7 @@ def api_graficar():
 
 @app.route("/api/derivada", methods=["POST"])
 @login_required
+@limiter.limit("30 per minute; 5 per second")
 def api_derivada():
     try:
         data = request.json or {}
@@ -1121,6 +1223,7 @@ def api_derivada():
 
 @app.route("/api/limite", methods=["POST"])
 @login_required
+@limiter.limit("30 per minute; 5 per second")
 def api_limite():
     try:
         data = request.json or {}
@@ -1141,6 +1244,7 @@ def api_limite():
 
 @app.route("/api/taylor", methods=["POST"])
 @login_required
+@limiter.limit("30 per minute; 5 per second")
 def api_taylor():
     try:
         data = request.json or {}
@@ -1162,6 +1266,7 @@ def api_taylor():
 
 @app.route("/api/ode", methods=["POST"])
 @login_required
+@limiter.limit("20 per minute; 3 per second")
 def api_ode():
     try:
         data = request.json or {}
@@ -1370,6 +1475,10 @@ def not_found(e):
 @app.errorhandler(500)
 def server_error(e):
     return jsonify({"error": "Error interno"}), 500
+
+@app.errorhandler(429)
+def ratelimit_handler(e):
+    return jsonify({"success": False, "error": "Demasiadas solicitudes. Espera un momento antes de continuar."}), 429
 
 
 if __name__ == "__main__":
