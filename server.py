@@ -40,6 +40,8 @@ def set_security_headers(resp):
     resp.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
     resp.headers['X-Content-Type-Options'] = 'nosniff'
     resp.headers['X-Frame-Options'] = 'SAMEORIGIN'
+    # Forzar compresión gzip aunque el CDN no la propague
+    resp.headers['Vary'] = 'Accept-Encoding'
     return resp
 app.config.update(
     SESSION_COOKIE_HTTPONLY=True,
