@@ -25,6 +25,13 @@ import json as _json
 load_dotenv()
 
 app = Flask(__name__)
+app.config['COMPRESS_MIMETYPES'] = [
+    'text/html', 'text/css', 'text/plain', 'text/xml',
+    'application/json', 'application/javascript',
+    'image/svg+xml'
+]
+app.config['COMPRESS_LEVEL'] = 6
+app.config['COMPRESS_MIN_SIZE'] = 500
 Compress(app)
 app.secret_key = os.environ.get('SECRET_KEY', 'carlostech-secret-2025')
 
