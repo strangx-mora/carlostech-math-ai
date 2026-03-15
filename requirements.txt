@@ -6,4 +6,5 @@ Jinja2
 python-dotenv
 Flask-Limiter
 Flask-Compress
+psycopg2-binary
 gunicorn

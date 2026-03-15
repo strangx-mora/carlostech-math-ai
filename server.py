@@ -10,6 +10,12 @@ from sympy.parsing.sympy_parser import (
     implicit_multiplication_application, convert_xor
 )
 import re, os, time, traceback, sqlite3, secrets, smtplib, threading
+try:
+    import psycopg2
+    import psycopg2.extras
+    HAS_PG = True
+except ImportError:
+    HAS_PG = False
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timedelta
@@ -64,82 +70,129 @@ ADMIN_USER = 'admin'
 ADMIN_HASH = generate_password_hash(os.environ.get('ADMIN_PASSWORD', 'admin123'))
 
 DB_PATH = os.path.join(os.path.dirname(__file__), 'users.db')
+DATABASE_URL = os.environ.get('DATABASE_URL', '')
+USE_PG = HAS_PG and bool(DATABASE_URL)
 
 def get_db():
+    if USE_PG:
+        conn = psycopg2.connect(DATABASE_URL, cursor_factory=psycopg2.extras.RealDictCursor)
+        return conn
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
 
+def ph():
+    return '%s' if USE_PG else '?'
+
 def init_db():
-    with get_db() as conn:
-        conn.execute('''
+    conn = get_db()
+    if USE_PG:
+        cur = conn.cursor()
+        cur.execute('''
             CREATE TABLE IF NOT EXISTS users (
-                id       INTEGER PRIMARY KEY AUTOINCREMENT,
-                username TEXT    UNIQUE NOT NULL,
-                email    TEXT    UNIQUE NOT NULL,
-                password TEXT    NOT NULL,
-                role     TEXT    NOT NULL DEFAULT 'student',
-                created  TEXT    NOT NULL DEFAULT (datetime('now'))
-            )
-        ''')
-        conn.execute('''
+                id       SERIAL PRIMARY KEY,
+                username TEXT UNIQUE NOT NULL,
+                email    TEXT UNIQUE NOT NULL,
+                password TEXT NOT NULL,
+                role     TEXT NOT NULL DEFAULT 'student',
+                created  TEXT NOT NULL DEFAULT (now()::text)
+            )''')
+        cur.execute('''
             CREATE TABLE IF NOT EXISTS password_resets (
-                id      INTEGER PRIMARY KEY AUTOINCREMENT,
-                email   TEXT NOT NULL,
-                token   TEXT UNIQUE NOT NULL,
-                expiry  TEXT NOT NULL
-            )
-        ''')
-        conn.execute('''
+                id     SERIAL PRIMARY KEY,
+                email  TEXT NOT NULL,
+                token  TEXT UNIQUE NOT NULL,
+                expiry TEXT NOT NULL
+            )''')
+        cur.execute('''
             CREATE TABLE IF NOT EXISTS history (
-                id      INTEGER PRIMARY KEY AUTOINCREMENT,
-                user    TEXT NOT NULL,
+                id      SERIAL PRIMARY KEY,
+                usr     TEXT NOT NULL,
                 tool    TEXT NOT NULL,
                 input   TEXT NOT NULL,
                 result  TEXT NOT NULL,
                 method  TEXT NOT NULL,
-                created TEXT NOT NULL DEFAULT (datetime('now'))
-            )
-        ''')
-        conn.execute('''
+                created TEXT NOT NULL DEFAULT (now()::text)
+            )''')
+        cur.execute('''
             CREATE TABLE IF NOT EXISTS cache (
                 key     TEXT PRIMARY KEY,
                 result  TEXT NOT NULL,
                 method  TEXT NOT NULL,
                 steps   TEXT NOT NULL,
                 hits    INTEGER NOT NULL DEFAULT 1,
-                created TEXT NOT NULL DEFAULT (datetime('now'))
-            )
-        ''')
-        conn.execute('''
+                created TEXT NOT NULL DEFAULT (now()::text)
+            )''')
+        cur.execute('''
             CREATE TABLE IF NOT EXISTS shares (
-                id      INTEGER PRIMARY KEY AUTOINCREMENT,
+                id      SERIAL PRIMARY KEY,
                 token   TEXT UNIQUE NOT NULL,
-                user    TEXT NOT NULL,
+                usr     TEXT NOT NULL,
                 tool    TEXT NOT NULL,
                 input   TEXT NOT NULL,
                 result  TEXT NOT NULL,
                 method  TEXT NOT NULL,
                 steps   TEXT NOT NULL,
                 views   INTEGER NOT NULL DEFAULT 0,
-                created TEXT NOT NULL DEFAULT (datetime('now'))
-            )
-        ''')
-        conn.execute('''
+                created TEXT NOT NULL DEFAULT (now()::text)
+            )''')
+        cur.execute('''
             CREATE TABLE IF NOT EXISTS usage (
-                id      INTEGER PRIMARY KEY AUTOINCREMENT,
-                user    TEXT NOT NULL,
-                day     TEXT NOT NULL,
-                count   INTEGER NOT NULL DEFAULT 1,
-                UNIQUE(user, day)
-            )
-        ''')
-        # Migrar columna views si no existe
-        try:
-            conn.execute("ALTER TABLE shares ADD COLUMN views INTEGER NOT NULL DEFAULT 0")
-        except Exception:
-            pass
+                id    SERIAL PRIMARY KEY,
+                usr   TEXT NOT NULL,
+                day   TEXT NOT NULL,
+                count INTEGER NOT NULL DEFAULT 1,
+                UNIQUE(usr, day)
+            )''')
         conn.commit()
+        cur.close()
+        conn.close()
+    else:
+        with conn:
+            conn.execute('''
+                CREATE TABLE IF NOT EXISTS users (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    username TEXT UNIQUE NOT NULL, email TEXT UNIQUE NOT NULL,
+                    password TEXT NOT NULL, role TEXT NOT NULL DEFAULT 'student',
+                    created TEXT NOT NULL DEFAULT (datetime('now')))
+            ''')
+            conn.execute('''
+                CREATE TABLE IF NOT EXISTS password_resets (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    email TEXT NOT NULL, token TEXT UNIQUE NOT NULL, expiry TEXT NOT NULL)
+            ''')
+            conn.execute('''
+                CREATE TABLE IF NOT EXISTS history (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    usr TEXT NOT NULL, tool TEXT NOT NULL, input TEXT NOT NULL,
+                    result TEXT NOT NULL, method TEXT NOT NULL,
+                    created TEXT NOT NULL DEFAULT (datetime('now')))
+            ''')
+            conn.execute('''
+                CREATE TABLE IF NOT EXISTS cache (
+                    key TEXT PRIMARY KEY, result TEXT NOT NULL, method TEXT NOT NULL,
+                    steps TEXT NOT NULL, hits INTEGER NOT NULL DEFAULT 1,
+                    created TEXT NOT NULL DEFAULT (datetime('now')))
+            ''')
+            conn.execute('''
+                CREATE TABLE IF NOT EXISTS shares (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    token TEXT UNIQUE NOT NULL, usr TEXT NOT NULL, tool TEXT NOT NULL,
+                    input TEXT NOT NULL, result TEXT NOT NULL, method TEXT NOT NULL,
+                    steps TEXT NOT NULL, views INTEGER NOT NULL DEFAULT 0,
+                    created TEXT NOT NULL DEFAULT (datetime('now')))
+            ''')
+            conn.execute('''
+                CREATE TABLE IF NOT EXISTS usage (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    usr TEXT NOT NULL, day TEXT NOT NULL, count INTEGER NOT NULL DEFAULT 1,
+                    UNIQUE(usr, day))
+            ''')
+            try:
+                conn.execute("ALTER TABLE shares ADD COLUMN views INTEGER NOT NULL DEFAULT 0")
+            except Exception:
+                pass
+            conn.commit()
 
 init_db()
 
@@ -916,8 +969,15 @@ def login():
             session['email'] = 'admin@carlostech.ai'
             session['role']  = 'admin'
             return redirect(url_for('dashboard'))
-        with get_db() as conn:
-            row = conn.execute("SELECT * FROM users WHERE username=?", (username,)).fetchone()
+        conn = get_db()
+        p = ph()
+        if USE_PG:
+            cur = conn.cursor()
+            cur.execute(f"SELECT * FROM users WHERE username={p}", (username,))
+            row = cur.fetchone()
+            cur.close(); conn.close()
+        else:
+            row = conn.execute(f"SELECT * FROM users WHERE username={p}", (username,)).fetchone()
         if row and check_password_hash(row['password'], password):
             session['user']  = row['username']
             session['email'] = row['email']
@@ -934,15 +994,27 @@ def forgot():
         return redirect(url_for('dashboard'))
     if request.method == "POST":
         email = request.form.get("email", "").strip().lower()
-        with get_db() as conn:
-            row = conn.execute("SELECT * FROM users WHERE email=?", (email,)).fetchone()
+        conn = get_db(); p = ph()
+        if USE_PG:
+            cur = conn.cursor()
+            cur.execute(f"SELECT * FROM users WHERE email={p}", (email,))
+            row = cur.fetchone(); cur.close(); conn.close()
+        else:
+            row = conn.execute(f"SELECT * FROM users WHERE email={p}", (email,)).fetchone()
         if row:
             token  = secrets.token_urlsafe(32)
             expiry = (datetime.utcnow() + timedelta(minutes=30)).isoformat()
-            with get_db() as conn:
-                conn.execute("DELETE FROM password_resets WHERE email=?", (email,))
-                conn.execute("INSERT INTO password_resets (email, token, expiry) VALUES (?,?,?)", (email, token, expiry))
-                conn.commit()
+            conn2 = get_db(); p = ph()
+            if USE_PG:
+                cur = conn2.cursor()
+                cur.execute(f"DELETE FROM password_resets WHERE email={p}", (email,))
+                cur.execute(f"INSERT INTO password_resets (email, token, expiry) VALUES ({p},{p},{p})", (email, token, expiry))
+                conn2.commit(); cur.close(); conn2.close()
+            else:
+                with conn2:
+                    conn2.execute(f"DELETE FROM password_resets WHERE email={p}", (email,))
+                    conn2.execute(f"INSERT INTO password_resets (email, token, expiry) VALUES ({p},{p},{p})", (email, token, expiry))
+                    conn2.commit()
             try:
                 threading.Thread(target=send_reset_email, args=(email, token), daemon=True).start()
             except Exception as e:
@@ -957,8 +1029,13 @@ def forgot():
 def reset(token):
     if 'user' in session:
         return redirect(url_for('dashboard'))
-    with get_db() as conn:
-        row = conn.execute("SELECT * FROM password_resets WHERE token=?", (token,)).fetchone()
+    conn = get_db(); p = ph()
+    if USE_PG:
+        cur = conn.cursor()
+        cur.execute(f"SELECT * FROM password_resets WHERE token={p}", (token,))
+        row = cur.fetchone(); cur.close(); conn.close()
+    else:
+        row = conn.execute(f"SELECT * FROM password_resets WHERE token={p}", (token,)).fetchone()
     if not row or datetime.utcnow() > datetime.fromisoformat(row['expiry']):
         return render_template("reset.html", invalid=True)
     if request.method == "POST":
@@ -968,10 +1045,17 @@ def reset(token):
             return render_template("reset.html", error="La contraseña debe tener al menos 6 caracteres")
         if password != confirm:
             return render_template("reset.html", error="Las contraseñas no coinciden")
-        with get_db() as conn:
-            conn.execute("UPDATE users SET password=? WHERE email=?", (generate_password_hash(password), row['email']))
-            conn.execute("DELETE FROM password_resets WHERE token=?", (token,))
-            conn.commit()
+        conn2 = get_db(); p = ph()
+        if USE_PG:
+            cur = conn2.cursor()
+            cur.execute(f"UPDATE users SET password={p} WHERE email={p}", (generate_password_hash(password), row['email']))
+            cur.execute(f"DELETE FROM password_resets WHERE token={p}", (token,))
+            conn2.commit(); cur.close(); conn2.close()
+        else:
+            with conn2:
+                conn2.execute(f"UPDATE users SET password={p} WHERE email={p}", (generate_password_hash(password), row['email']))
+                conn2.execute(f"DELETE FROM password_resets WHERE token={p}", (token,))
+                conn2.commit()
         return redirect(url_for('login') + '?reset=1')
     return render_template("reset.html")
 
@@ -998,17 +1082,23 @@ def register():
         if username == ADMIN_USER:
             return render_template("register.html", error="Ese nombre de usuario no está disponible")
         try:
-            with get_db() as conn:
-                conn.execute(
-                    "INSERT INTO users (username, email, password) VALUES (?,?,?)",
-                    (username, email, generate_password_hash(password))
-                )
-                conn.commit()
+            conn = get_db(); p = ph()
+            if USE_PG:
+                cur = conn.cursor()
+                cur.execute(f"INSERT INTO users (username, email, password) VALUES ({p},{p},{p})",
+                            (username, email, generate_password_hash(password)))
+                conn.commit(); cur.close(); conn.close()
+            else:
+                with conn:
+                    conn.execute(f"INSERT INTO users (username, email, password) VALUES ({p},{p},{p})",
+                                 (username, email, generate_password_hash(password)))
+                    conn.commit()
             return redirect(url_for('login') + '?registered=1')
-        except sqlite3.IntegrityError as e:
-            if 'username' in str(e):
+        except Exception as e:
+            err = str(e)
+            if 'username' in err or 'unique' in err.lower():
                 return render_template("register.html", error="Ese nombre de usuario ya existe")
-            if 'email' in str(e):
+            if 'email' in err:
                 return render_template("register.html", error="Ese email ya está registrado")
             return render_template("register.html", error="Error al registrar")
     return render_template("register.html")
@@ -1044,13 +1134,21 @@ def admin_required(f):
 def admin_panel():
     if session.get('role') != 'admin':
         return redirect(url_for('dashboard'))
-    with get_db() as conn:
+    conn = get_db()
+    if USE_PG:
+        cur = conn.cursor()
+        cur.execute("SELECT id,username,email,role,created FROM users ORDER BY created DESC")
+        users = cur.fetchall()
+        cur.execute("SELECT COUNT(*) FROM history"); total_calcs = cur.fetchone()['count']
+        cur.execute("SELECT COUNT(*) FROM shares"); total_shares = cur.fetchone()['count']
+        cur.execute("SELECT usr,tool,input,result,created FROM history ORDER BY created DESC LIMIT 20")
+        recent = cur.fetchall()
+        cur.close(); conn.close()
+    else:
         users = conn.execute("SELECT id,username,email,role,created FROM users ORDER BY created DESC").fetchall()
         total_calcs = conn.execute("SELECT COUNT(*) FROM history").fetchone()[0]
         total_shares = conn.execute("SELECT COUNT(*) FROM shares").fetchone()[0]
-        recent = conn.execute(
-            "SELECT user,tool,input,result,created FROM history ORDER BY created DESC LIMIT 20"
-        ).fetchall()
+        recent = conn.execute("SELECT usr,tool,input,result,created FROM history ORDER BY created DESC LIMIT 20").fetchall()
     return render_template("admin.html",
         users=users, total_calcs=total_calcs,
         total_shares=total_shares, recent=recent,
@@ -1062,28 +1160,35 @@ def admin_panel():
 @login_required
 @admin_required
 def admin_delete_user(uid):
-    with get_db() as conn:
-        conn.execute("DELETE FROM users WHERE id=?", (uid,))
-        conn.execute("DELETE FROM history WHERE user=(SELECT username FROM users WHERE id=?)", (uid,))
-        conn.commit()
+    conn = get_db(); p = ph()
+    if USE_PG:
+        cur = conn.cursor()
+        cur.execute(f"DELETE FROM history WHERE usr=(SELECT username FROM users WHERE id={p})", (uid,))
+        cur.execute(f"DELETE FROM users WHERE id={p}", (uid,))
+        conn.commit(); cur.close(); conn.close()
+    else:
+        with conn:
+            conn.execute(f"DELETE FROM history WHERE usr=(SELECT username FROM users WHERE id={p})", (uid,))
+            conn.execute(f"DELETE FROM users WHERE id={p}", (uid,))
+            conn.commit()
     return jsonify({"ok": True})
 
 
 @app.route("/api/history", methods=["GET"])
 @login_required
 def api_history_get():
-    with get_db() as conn:
-        rows = conn.execute(
-            "SELECT tool,input,result,method,created FROM history WHERE user=? ORDER BY created DESC LIMIT 50",
-            (session['user'],)
-        ).fetchall()
-    # Enriquecer con vistas de shares del mismo usuario
+    conn = get_db(); p = ph()
+    if USE_PG:
+        cur = conn.cursor()
+        cur.execute(f"SELECT tool,input,result,method,created FROM history WHERE usr={p} ORDER BY created DESC LIMIT 50", (session['user'],))
+        rows = cur.fetchall()
+        cur.execute(f"SELECT input, SUM(views) as total_views FROM shares WHERE usr={p} GROUP BY input", (session['user'],))
+        shares_views = cur.fetchall()
+        cur.close(); conn.close()
+    else:
+        rows = conn.execute(f"SELECT tool,input,result,method,created FROM history WHERE usr={p} ORDER BY created DESC LIMIT 50", (session['user'],)).fetchall()
+        shares_views = conn.execute(f"SELECT input, SUM(views) as total_views FROM shares WHERE usr={p} GROUP BY input", (session['user'],)).fetchall()
     result_list = [dict(r) for r in rows]
-    with get_db() as conn:
-        shares_views = conn.execute(
-            "SELECT input, SUM(views) as total_views FROM shares WHERE user=? GROUP BY input",
-            (session['user'],)
-        ).fetchall()
     views_map = {r['input']: r['total_views'] for r in shares_views}
     for item in result_list:
         item['views'] = views_map.get(item['input'], 0)
@@ -1094,22 +1199,32 @@ def api_history_get():
 @login_required
 def api_history_save():
     data = request.json or {}
-    with get_db() as conn:
-        conn.execute(
-            "INSERT INTO history (user,tool,input,result,method) VALUES (?,?,?,?,?)",
-            (session['user'], data.get('tool',''), data.get('input',''),
-             data.get('result',''), data.get('method',''))
-        )
-        conn.commit()
+    conn = get_db(); p = ph()
+    if USE_PG:
+        cur = conn.cursor()
+        cur.execute(f"INSERT INTO history (usr,tool,input,result,method) VALUES ({p},{p},{p},{p},{p})",
+                    (session['user'], data.get('tool',''), data.get('input',''), data.get('result',''), data.get('method','')))
+        conn.commit(); cur.close(); conn.close()
+    else:
+        with conn:
+            conn.execute(f"INSERT INTO history (usr,tool,input,result,method) VALUES ({p},{p},{p},{p},{p})",
+                         (session['user'], data.get('tool',''), data.get('input',''), data.get('result',''), data.get('method','')))
+            conn.commit()
     return jsonify({"ok": True})
 
 
 @app.route("/api/history", methods=["DELETE"])
 @login_required
 def api_history_clear():
-    with get_db() as conn:
-        conn.execute("DELETE FROM history WHERE user=?", (session['user'],))
-        conn.commit()
+    conn = get_db(); p = ph()
+    if USE_PG:
+        cur = conn.cursor()
+        cur.execute(f"DELETE FROM history WHERE usr={p}", (session['user'],))
+        conn.commit(); cur.close(); conn.close()
+    else:
+        with conn:
+            conn.execute(f"DELETE FROM history WHERE usr={p}", (session['user'],))
+            conn.commit()
     return jsonify({"ok": True})
 
 
@@ -1128,14 +1243,24 @@ def api_cambiar_password():
         return jsonify({"error": "La nueva contraseña debe tener al menos 6 caracteres"}), 400
     if nueva != confirm:
         return jsonify({"error": "Las contraseñas no coinciden"}), 400
-    with get_db() as conn:
-        row = conn.execute("SELECT password FROM users WHERE username=?", (session['user'],)).fetchone()
+    conn = get_db(); p = ph()
+    if USE_PG:
+        cur = conn.cursor()
+        cur.execute(f"SELECT password FROM users WHERE username={p}", (session['user'],))
+        row = cur.fetchone(); cur.close(); conn.close()
+    else:
+        row = conn.execute(f"SELECT password FROM users WHERE username={p}", (session['user'],)).fetchone()
     if not row or not check_password_hash(row['password'], actual):
         return jsonify({"error": "Contraseña actual incorrecta"}), 400
-    with get_db() as conn:
-        conn.execute("UPDATE users SET password=? WHERE username=?",
-                     (generate_password_hash(nueva), session['user']))
-        conn.commit()
+    conn2 = get_db(); p = ph()
+    if USE_PG:
+        cur = conn2.cursor()
+        cur.execute(f"UPDATE users SET password={p} WHERE username={p}", (generate_password_hash(nueva), session['user']))
+        conn2.commit(); cur.close(); conn2.close()
+    else:
+        with conn2:
+            conn2.execute(f"UPDATE users SET password={p} WHERE username={p}", (generate_password_hash(nueva), session['user']))
+            conn2.commit()
     return jsonify({"ok": True})
 
 
@@ -1143,19 +1268,26 @@ def api_cambiar_password():
 
 def get_daily_usage(user):
     today = datetime.utcnow().strftime('%Y-%m-%d')
-    with get_db() as conn:
-        row = conn.execute("SELECT count FROM usage WHERE user=? AND day=?", (user, today)).fetchone()
+    conn = get_db(); p = ph()
+    if USE_PG:
+        cur = conn.cursor()
+        cur.execute(f"SELECT count FROM usage WHERE usr={p} AND day={p}", (user, today))
+        row = cur.fetchone(); cur.close(); conn.close()
+    else:
+        row = conn.execute(f"SELECT count FROM usage WHERE usr={p} AND day={p}", (user, today)).fetchone()
     return row['count'] if row else 0
 
 def increment_usage(user):
     today = datetime.utcnow().strftime('%Y-%m-%d')
-    with get_db() as conn:
-        conn.execute(
-            "INSERT INTO usage (user, day, count) VALUES (?,?,1) "
-            "ON CONFLICT(user, day) DO UPDATE SET count = count + 1",
-            (user, today)
-        )
-        conn.commit()
+    conn = get_db(); p = ph()
+    if USE_PG:
+        cur = conn.cursor()
+        cur.execute(f"INSERT INTO usage (usr, day, count) VALUES ({p},{p},1) ON CONFLICT(usr, day) DO UPDATE SET count = usage.count + 1", (user, today))
+        conn.commit(); cur.close(); conn.close()
+    else:
+        with conn:
+            conn.execute(f"INSERT INTO usage (usr, day, count) VALUES ({p},{p},1) ON CONFLICT(usr, day) DO UPDATE SET count = count + 1", (user, today))
+            conn.commit()
 
 @app.route("/api/uso", methods=["GET"])
 @login_required
@@ -1172,20 +1304,34 @@ def cache_key(expr_text, a, b):
     return f"{expr_text.strip()}|{a}|{b}"
 
 def cache_get(key):
-    with get_db() as conn:
-        row = conn.execute("SELECT result, method, steps FROM cache WHERE key=?", (key,)).fetchone()
+    conn = get_db(); p = ph()
+    if USE_PG:
+        cur = conn.cursor()
+        cur.execute(f"SELECT result, method, steps FROM cache WHERE key={p}", (key,))
+        row = cur.fetchone()
         if row:
-            conn.execute("UPDATE cache SET hits = hits + 1 WHERE key=?", (key,))
+            cur.execute(f"UPDATE cache SET hits = hits + 1 WHERE key={p}", (key,))
+            conn.commit()
+        cur.close(); conn.close()
+    else:
+        row = conn.execute(f"SELECT result, method, steps FROM cache WHERE key={p}", (key,)).fetchone()
+        if row:
+            conn.execute(f"UPDATE cache SET hits = hits + 1 WHERE key={p}", (key,))
             conn.commit()
     return dict(row) if row else None
 
 def cache_set(key, result, method, steps):
-    with get_db() as conn:
-        conn.execute(
-            "INSERT OR REPLACE INTO cache (key, result, method, steps) VALUES (?,?,?,?)",
-            (key, result, method, _json.dumps(steps))
-        )
-        conn.commit()
+    conn = get_db(); p = ph()
+    if USE_PG:
+        cur = conn.cursor()
+        cur.execute(f"INSERT INTO cache (key, result, method, steps) VALUES ({p},{p},{p},{p}) ON CONFLICT(key) DO UPDATE SET result=EXCLUDED.result, method=EXCLUDED.method, steps=EXCLUDED.steps",
+                    (key, result, method, _json.dumps(steps)))
+        conn.commit(); cur.close(); conn.close()
+    else:
+        with conn:
+            conn.execute(f"INSERT OR REPLACE INTO cache (key, result, method, steps) VALUES ({p},{p},{p},{p})",
+                         (key, result, method, _json.dumps(steps)))
+            conn.commit()
 
 # ── Solver con timeout ───────────────────────────────────────────
 
@@ -1608,13 +1754,17 @@ def api_compartir():
     try:
         data   = request.json or {}
         token  = secrets.token_urlsafe(10)
-        with get_db() as conn:
-            conn.execute(
-                "INSERT INTO shares (token,user,tool,input,result,method,steps) VALUES (?,?,?,?,?,?,?)",
-                (token, session['user'], data.get('tool',''), data.get('input',''),
-                 data.get('result',''), data.get('method',''), _json.dumps(data.get('steps',[])))
-            )
-            conn.commit()
+        conn = get_db(); p = ph()
+        if USE_PG:
+            cur = conn.cursor()
+            cur.execute(f"INSERT INTO shares (token,usr,tool,input,result,method,steps) VALUES ({p},{p},{p},{p},{p},{p},{p})",
+                        (token, session['user'], data.get('tool',''), data.get('input',''), data.get('result',''), data.get('method',''), _json.dumps(data.get('steps',[]))))
+            conn.commit(); cur.close(); conn.close()
+        else:
+            with conn:
+                conn.execute(f"INSERT INTO shares (token,usr,tool,input,result,method,steps) VALUES ({p},{p},{p},{p},{p},{p},{p})",
+                             (token, session['user'], data.get('tool',''), data.get('input',''), data.get('result',''), data.get('method',''), _json.dumps(data.get('steps',[]))))
+                conn.commit()
         return jsonify({"url": f"{APP_URL}/s/{token}"})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -1622,15 +1772,25 @@ def api_compartir():
 
 @app.route("/s/<token>")
 def share_view(token):
-    with get_db() as conn:
-        row = conn.execute("SELECT * FROM shares WHERE token=?", (token,)).fetchone()
+    conn = get_db(); p = ph()
+    if USE_PG:
+        cur = conn.cursor()
+        cur.execute(f"SELECT * FROM shares WHERE token={p}", (token,))
+        row = cur.fetchone(); cur.close(); conn.close()
+    else:
+        row = conn.execute(f"SELECT * FROM shares WHERE token={p}", (token,)).fetchone()
     if not row:
         return "Solución no encontrada o expirada.", 404
-    # Incrementar vistas (solo si no es el propio autor)
-    if session.get('user') != row['user']:
-        with get_db() as conn:
-            conn.execute("UPDATE shares SET views = views + 1 WHERE token=?", (token,))
-            conn.commit()
+    if session.get('user') != row['usr']:
+        conn2 = get_db(); p = ph()
+        if USE_PG:
+            cur = conn2.cursor()
+            cur.execute(f"UPDATE shares SET views = views + 1 WHERE token={p}", (token,))
+            conn2.commit(); cur.close(); conn2.close()
+        else:
+            with conn2:
+                conn2.execute(f"UPDATE shares SET views = views + 1 WHERE token={p}", (token,))
+                conn2.commit()
     steps = _json.loads(row['steps'])
     return render_template("share.html", row=row, steps=steps)
 
