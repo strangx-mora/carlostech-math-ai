@@ -308,6 +308,11 @@
 function toggleFaq(el) {
     el.parentElement.classList.toggle('open');
 }
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js', { scope: '/' });
+    });
+}
 </script>
 </body>
 </html>
