@@ -1,0 +1,22 @@
+{
+  "name": "CarlosTech Math AI",
+  "short_name": "CarlosTech",
+  "description": "Calculadora de integrales, derivadas, límites y más — paso a paso",
+  "start_url": "/app",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0f172a",
+  "theme_color": "#6366f1",
+  "lang": "es",
+  "categories": ["education", "utilities"],
+  "icons": [
+    { "src": "/static/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/static/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    { "name": "Integrales", "url": "/app", "description": "Resolver integrales" },
+    { "name": "Derivadas",  "url": "/app", "description": "Calcular derivadas" }
+  ]
+}

@@ -809,6 +809,18 @@ def login_required(f):
     return decorated
 
 
+@app.route("/manifest.json")
+def pwa_manifest():
+    return app.send_static_file('manifest.json')
+
+@app.route("/sw.js")
+def pwa_sw():
+    resp = app.send_static_file('sw.js')
+    resp.headers['Service-Worker-Allowed'] = '/'
+    resp.headers['Cache-Control'] = 'no-cache'
+    return resp
+
+
 @app.route("/googlef50b39a82150b4d8.html")
 def google_verify():
     return app.response_class("google-site-verification: googlef50b39a82150b4d8.html", mimetype='text/html')

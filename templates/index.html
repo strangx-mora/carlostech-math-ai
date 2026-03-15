@@ -74,6 +74,15 @@
     }
     </script>
 
+    <!-- ═══ PWA ═══ -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#6366f1">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="CarlosTech">
+    <link rel="apple-touch-icon" href="/static/icon-192.png">
+
     <!-- ═══ CSS ═══ -->
     <link rel="stylesheet" href="/static/style.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mathquill@0.10.1/build/mathquill.css">
@@ -1631,6 +1640,49 @@
             .catch(() => { msg.style.display='block'; msg.style.color='#fca5a5'; msg.textContent='Error de conexi\u00f3n'; });
         }
 
+    </script>
+
+    <!-- PWA Banner instalar -->
+    <div id="pwa-banner" class="hidden" style="position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);z-index:9999;background:#1e293b;border:1px solid rgba(99,102,241,.4);border-radius:1rem;padding:.875rem 1.25rem;display:flex;align-items:center;gap:1rem;box-shadow:0 8px 32px rgba(0,0,0,.4);min-width:280px;max-width:360px;">
+        <div style="width:40px;height:40px;border-radius:.625rem;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0;">∫</div>
+        <div style="flex:1;">
+            <div style="font-size:.85rem;font-weight:700;color:#f1f5f9;">Instalar CarlosTech</div>
+            <div style="font-size:.75rem;color:#94a3b8;">Úsala sin internet</div>
+        </div>
+        <button onclick="installPWA()" style="background:linear-gradient(135deg,#3b82f6,#6366f1);color:#fff;border:none;border-radius:.5rem;padding:.5rem .875rem;font-size:.8rem;font-weight:700;cursor:pointer;">Instalar</button>
+        <button onclick="document.getElementById('pwa-banner').classList.add('hidden')" style="background:none;border:none;color:#64748b;cursor:pointer;font-size:1rem;padding:.25rem;">✕</button>
+    </div>
+
+    <script>
+        // PWA: Registrar Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js', { scope: '/' })
+                    .then(reg => console.log('[SW] Registrado:', reg.scope))
+                    .catch(err => console.warn('[SW] Error:', err));
+            });
+        }
+
+        // PWA: Banner instalar app
+        let _deferredPrompt = null;
+        window.addEventListener('beforeinstallprompt', e => {
+            e.preventDefault();
+            _deferredPrompt = e;
+            document.getElementById('pwa-banner').classList.remove('hidden');
+        });
+        window.addEventListener('appinstalled', () => {
+            document.getElementById('pwa-banner').classList.add('hidden');
+            showToast('¡App instalada correctamente! 🎉');
+        });
+
+        function installPWA() {
+            if (!_deferredPrompt) return;
+            _deferredPrompt.prompt();
+            _deferredPrompt.userChoice.then(() => {
+                _deferredPrompt = null;
+                document.getElementById('pwa-banner').classList.add('hidden');
+            });
+        }
     </script>
 
 </body>
