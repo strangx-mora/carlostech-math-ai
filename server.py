@@ -85,7 +85,11 @@ def ph():
     return '%s' if USE_PG else '?'
 
 def init_db():
-    conn = get_db()
+    try:
+        conn = get_db()
+    except Exception as e:
+        print(f"[DB] Error conectando: {e}")
+        return
     if USE_PG:
         cur = conn.cursor()
         cur.execute('''
