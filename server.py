@@ -944,7 +944,7 @@ def forgot():
                 conn.execute("INSERT INTO password_resets (email, token, expiry) VALUES (?,?,?)", (email, token, expiry))
                 conn.commit()
             try:
-                send_reset_email(email, token)
+                threading.Thread(target=send_reset_email, args=(email, token), daemon=True).start()
             except Exception as e:
                 print(f"[MAIL] Error: {e}")
                 return render_template("forgot.html", error="No se pudo enviar el correo. Verifica la configuración SMTP.")
