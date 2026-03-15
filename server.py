@@ -73,11 +73,12 @@ ADMIN_HASH = generate_password_hash(os.environ.get('ADMIN_PASSWORD', 'admin123')
 DB_PATH = os.path.join(os.path.dirname(__file__), 'users.db')
 DATABASE_URL = os.environ.get('DATABASE_URL', '')
 USE_PG = HAS_PG and bool(DATABASE_URL)
+print(f"[DB] USE_PG={USE_PG} HAS_PG={HAS_PG} URL={'SET' if DATABASE_URL else 'EMPTY'}")
 
 def get_db():
     if USE_PG:
         url = DATABASE_URL.replace('postgres://', 'postgresql://', 1)
-        conn = psycopg2.connect(url, cursor_factory=psycopg2.extras.RealDictCursor)
+        conn = psycopg2.connect(url, cursor_factory=psycopg2.extras.RealDictCursor, connect_timeout=10)
         return conn
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
