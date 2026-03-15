@@ -90,113 +90,92 @@ def init_db():
     except Exception as e:
         print(f"[DB] Error conectando: {e}")
         return
-    if USE_PG:
-        cur = conn.cursor()
-        cur.execute('''
-            CREATE TABLE IF NOT EXISTS users (
-                id       SERIAL PRIMARY KEY,
-                username TEXT UNIQUE NOT NULL,
-                email    TEXT UNIQUE NOT NULL,
-                password TEXT NOT NULL,
-                role     TEXT NOT NULL DEFAULT 'student',
-                created  TEXT NOT NULL DEFAULT (now()::text)
-            )''')
-        cur.execute('''
-            CREATE TABLE IF NOT EXISTS password_resets (
-                id     SERIAL PRIMARY KEY,
-                email  TEXT NOT NULL,
-                token  TEXT UNIQUE NOT NULL,
-                expiry TEXT NOT NULL
-            )''')
-        cur.execute('''
-            CREATE TABLE IF NOT EXISTS history (
-                id      SERIAL PRIMARY KEY,
-                usr     TEXT NOT NULL,
-                tool    TEXT NOT NULL,
-                input   TEXT NOT NULL,
-                result  TEXT NOT NULL,
-                method  TEXT NOT NULL,
-                created TEXT NOT NULL DEFAULT (now()::text)
-            )''')
-        cur.execute('''
-            CREATE TABLE IF NOT EXISTS cache (
-                key     TEXT PRIMARY KEY,
-                result  TEXT NOT NULL,
-                method  TEXT NOT NULL,
-                steps   TEXT NOT NULL,
-                hits    INTEGER NOT NULL DEFAULT 1,
-                created TEXT NOT NULL DEFAULT (now()::text)
-            )''')
-        cur.execute('''
-            CREATE TABLE IF NOT EXISTS shares (
-                id      SERIAL PRIMARY KEY,
-                token   TEXT UNIQUE NOT NULL,
-                usr     TEXT NOT NULL,
-                tool    TEXT NOT NULL,
-                input   TEXT NOT NULL,
-                result  TEXT NOT NULL,
-                method  TEXT NOT NULL,
-                steps   TEXT NOT NULL,
-                views   INTEGER NOT NULL DEFAULT 0,
-                created TEXT NOT NULL DEFAULT (now()::text)
-            )''')
-        cur.execute('''
-            CREATE TABLE IF NOT EXISTS usage (
-                id    SERIAL PRIMARY KEY,
-                usr   TEXT NOT NULL,
-                day   TEXT NOT NULL,
-                count INTEGER NOT NULL DEFAULT 1,
-                UNIQUE(usr, day)
-            )''')
-        conn.commit()
-        cur.close()
-        conn.close()
-    else:
-        with conn:
-            conn.execute('''
+    try:
+        if USE_PG:
+            cur = conn.cursor()
+            cur.execute('''
                 CREATE TABLE IF NOT EXISTS users (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    username TEXT UNIQUE NOT NULL, email TEXT UNIQUE NOT NULL,
-                    password TEXT NOT NULL, role TEXT NOT NULL DEFAULT 'student',
-                    created TEXT NOT NULL DEFAULT (datetime('now')))
+                    id SERIAL PRIMARY KEY, username TEXT UNIQUE NOT NULL,
+                    email TEXT UNIQUE NOT NULL, password TEXT NOT NULL,
+                    role TEXT NOT NULL DEFAULT 'student', created TEXT NOT NULL DEFAULT (now()::text))
             ''')
-            conn.execute('''
+            cur.execute('''
                 CREATE TABLE IF NOT EXISTS password_resets (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    email TEXT NOT NULL, token TEXT UNIQUE NOT NULL, expiry TEXT NOT NULL)
+                    id SERIAL PRIMARY KEY, email TEXT NOT NULL,
+                    token TEXT UNIQUE NOT NULL, expiry TEXT NOT NULL)
             ''')
-            conn.execute('''
+            cur.execute('''
                 CREATE TABLE IF NOT EXISTS history (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    usr TEXT NOT NULL, tool TEXT NOT NULL, input TEXT NOT NULL,
-                    result TEXT NOT NULL, method TEXT NOT NULL,
-                    created TEXT NOT NULL DEFAULT (datetime('now')))
+                    id SERIAL PRIMARY KEY, usr TEXT NOT NULL, tool TEXT NOT NULL,
+                    input TEXT NOT NULL, result TEXT NOT NULL, method TEXT NOT NULL,
+                    created TEXT NOT NULL DEFAULT (now()::text))
             ''')
-            conn.execute('''
+            cur.execute('''
                 CREATE TABLE IF NOT EXISTS cache (
                     key TEXT PRIMARY KEY, result TEXT NOT NULL, method TEXT NOT NULL,
                     steps TEXT NOT NULL, hits INTEGER NOT NULL DEFAULT 1,
-                    created TEXT NOT NULL DEFAULT (datetime('now')))
+                    created TEXT NOT NULL DEFAULT (now()::text))
             ''')
-            conn.execute('''
+            cur.execute('''
                 CREATE TABLE IF NOT EXISTS shares (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    token TEXT UNIQUE NOT NULL, usr TEXT NOT NULL, tool TEXT NOT NULL,
-                    input TEXT NOT NULL, result TEXT NOT NULL, method TEXT NOT NULL,
-                    steps TEXT NOT NULL, views INTEGER NOT NULL DEFAULT 0,
-                    created TEXT NOT NULL DEFAULT (datetime('now')))
+                    id SERIAL PRIMARY KEY, token TEXT UNIQUE NOT NULL, usr TEXT NOT NULL,
+                    tool TEXT NOT NULL, input TEXT NOT NULL, result TEXT NOT NULL,
+                    method TEXT NOT NULL, steps TEXT NOT NULL, views INTEGER NOT NULL DEFAULT 0,
+                    created TEXT NOT NULL DEFAULT (now()::text))
             ''')
-            conn.execute('''
+            cur.execute('''
                 CREATE TABLE IF NOT EXISTS usage (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    usr TEXT NOT NULL, day TEXT NOT NULL, count INTEGER NOT NULL DEFAULT 1,
-                    UNIQUE(usr, day))
+                    id SERIAL PRIMARY KEY, usr TEXT NOT NULL, day TEXT NOT NULL,
+                    count INTEGER NOT NULL DEFAULT 1, UNIQUE(usr, day))
             ''')
-            try:
-                conn.execute("ALTER TABLE shares ADD COLUMN views INTEGER NOT NULL DEFAULT 0")
-            except Exception:
-                pass
             conn.commit()
+            cur.close()
+            conn.close()
+        else:
+            with conn:
+                conn.execute('''
+                    CREATE TABLE IF NOT EXISTS users (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE NOT NULL,
+                        email TEXT UNIQUE NOT NULL, password TEXT NOT NULL,
+                        role TEXT NOT NULL DEFAULT 'student', created TEXT NOT NULL DEFAULT (datetime('now')))
+                ''')
+                conn.execute('''
+                    CREATE TABLE IF NOT EXISTS password_resets (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT NOT NULL,
+                        token TEXT UNIQUE NOT NULL, expiry TEXT NOT NULL)
+                ''')
+                conn.execute('''
+                    CREATE TABLE IF NOT EXISTS history (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT, usr TEXT NOT NULL,
+                        tool TEXT NOT NULL, input TEXT NOT NULL, result TEXT NOT NULL,
+                        method TEXT NOT NULL, created TEXT NOT NULL DEFAULT (datetime('now')))
+                ''')
+                conn.execute('''
+                    CREATE TABLE IF NOT EXISTS cache (
+                        key TEXT PRIMARY KEY, result TEXT NOT NULL, method TEXT NOT NULL,
+                        steps TEXT NOT NULL, hits INTEGER NOT NULL DEFAULT 1,
+                        created TEXT NOT NULL DEFAULT (datetime('now')))
+                ''')
+                conn.execute('''
+                    CREATE TABLE IF NOT EXISTS shares (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT, token TEXT UNIQUE NOT NULL,
+                        usr TEXT NOT NULL, tool TEXT NOT NULL, input TEXT NOT NULL,
+                        result TEXT NOT NULL, method TEXT NOT NULL, steps TEXT NOT NULL,
+                        views INTEGER NOT NULL DEFAULT 0, created TEXT NOT NULL DEFAULT (datetime('now')))
+                ''')
+                conn.execute('''
+                    CREATE TABLE IF NOT EXISTS usage (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT, usr TEXT NOT NULL,
+                        day TEXT NOT NULL, count INTEGER NOT NULL DEFAULT 1, UNIQUE(usr, day))
+                ''')
+                try:
+                    conn.execute("ALTER TABLE shares ADD COLUMN views INTEGER NOT NULL DEFAULT 0")
+                except Exception:
+                    pass
+                conn.commit()
+        print("[DB] Tablas inicializadas correctamente")
+    except Exception as e:
+        print(f"[DB] Error creando tablas: {e}")
 
 init_db()
 
