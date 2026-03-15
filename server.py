@@ -120,7 +120,7 @@ MAIL_HOST = os.environ.get('MAIL_HOST', 'smtp.gmail.com')
 MAIL_PORT = int(os.environ.get('MAIL_PORT', 587))
 MAIL_USER = os.environ.get('MAIL_USER', '')   # tu Gmail
 MAIL_PASS = os.environ.get('MAIL_PASS', '')   # contraseña de aplicación
-APP_URL   = os.environ.get('APP_URL', 'http://localhost:10000')
+APP_URL   = os.environ.get('APP_URL', 'https://carlostech-math-ai-production.up.railway.app')
 
 def send_reset_email(to_email, token):
     link = f"{APP_URL}/reset/{token}"
@@ -828,7 +828,7 @@ def google_verify():
 
 @app.route("/sitemap.xml")
 def sitemap():
-    base = "https://carlostech-math-ai.onrender.com"
+    base = "https://carlostech-math-ai-production.up.railway.app"
     urls = [
         {"loc": f"{base}/",         "priority": "1.0", "changefreq": "weekly"},
         {"loc": f"{base}/login",    "priority": "0.8", "changefreq": "monthly"},
