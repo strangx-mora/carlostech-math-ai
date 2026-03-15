@@ -842,8 +842,6 @@ def sitemap():
     today = datetime.utcnow().strftime('%Y-%m-%d')
     urls = [
         {"loc": f"{base}/",                        "priority": "1.0", "changefreq": "weekly"},
-        {"loc": f"{base}/login",                   "priority": "0.7", "changefreq": "monthly"},
-        {"loc": f"{base}/register",                "priority": "0.9", "changefreq": "monthly"},
         {"loc": f"{base}/calculadora-integrales",  "priority": "0.9", "changefreq": "weekly"},
         {"loc": f"{base}/calculadora-derivadas",   "priority": "0.8", "changefreq": "weekly"},
         {"loc": f"{base}/calculadora-limites",     "priority": "0.8", "changefreq": "weekly"},
