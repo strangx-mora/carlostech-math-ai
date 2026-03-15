@@ -218,7 +218,8 @@ def send_reset_email(to_email, token):
         data=payload,
         headers={
             "Authorization": f"Bearer {RESEND_API_KEY}",
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+            "User-Agent": "CarlosTech-MathAI/1.0"
         },
         method="POST"
     )
