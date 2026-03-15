@@ -221,8 +221,13 @@ def send_reset_email(to_email, token):
         },
         method="POST"
     )
-    with urllib.request.urlopen(req, timeout=10) as resp:
-        print(f"[MAIL] Resend OK: {resp.status}")
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            print(f"[MAIL] Resend OK: {resp.status}")
+    except urllib.error.HTTPError as e:
+        body = e.read().decode()
+        print(f"[MAIL] Resend ERROR {e.code}: {body}")
+        raise
 
 x, t, u, n = symbols('x t u n')
 
