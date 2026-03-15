@@ -18,6 +18,7 @@ except ImportError:
     HAS_PG = False
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+import urllib.request
 from datetime import datetime, timedelta
 from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -187,12 +188,10 @@ MAIL_USER = os.environ.get('MAIL_USER', '')   # tu Gmail
 MAIL_PASS = os.environ.get('MAIL_PASS', '')   # contraseña de aplicación
 APP_URL   = os.environ.get('APP_URL', 'https://carlostech-math-ai-production.up.railway.app')
 
+RESEND_API_KEY = os.environ.get('RESEND_API_KEY', '')
+
 def send_reset_email(to_email, token):
     link = f"{APP_URL}/reset/{token}"
-    msg  = MIMEMultipart('alternative')
-    msg['Subject'] = 'Recuperar contraseña — CarlosTech Math AI'
-    msg['From']    = f'CarlosTech Math AI <{MAIL_USER}>'
-    msg['To']      = to_email
     html = f"""
     <div style="font-family:sans-serif;max-width:480px;margin:auto;background:#0f172a;color:#f1f5f9;border-radius:12px;padding:2rem;">
         <div style="text-align:center;margin-bottom:1.5rem;">
@@ -207,10 +206,23 @@ def send_reset_email(to_email, token):
         <p style="color:#64748b;font-size:0.75rem;margin-top:1rem;word-break:break-all;">Enlace: {link}</p>
     </div>
     """
-    msg.attach(MIMEText(html, 'html'))
-    with smtplib.SMTP_SSL(MAIL_HOST, 465) as s:
-        s.login(MAIL_USER, MAIL_PASS)
-        s.sendmail(MAIL_USER, to_email, msg.as_string())
+    payload = _json.dumps({
+        "from": "CarlosTech Math AI <onboarding@resend.dev>",
+        "to": [to_email],
+        "subject": "Recuperar contraseña — CarlosTech Math AI",
+        "html": html
+    }).encode()
+    req = urllib.request.Request(
+        "https://api.resend.com/emails",
+        data=payload,
+        headers={
+            "Authorization": f"Bearer {RESEND_API_KEY}",
+            "Content-Type": "application/json"
+        },
+        method="POST"
+    )
+    with urllib.request.urlopen(req, timeout=10) as resp:
+        print(f"[MAIL] Resend OK: {resp.status}")
 
 x, t, u, n = symbols('x t u n')
 
