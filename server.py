@@ -18,12 +18,14 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from flask_compress import Compress
 import numpy as np
 import json as _json
 
 load_dotenv()
 
 app = Flask(__name__)
+Compress(app)
 app.secret_key = os.environ.get('SECRET_KEY', 'carlostech-secret-2025')
 app.config.update(
     SESSION_COOKIE_HTTPONLY=True,
