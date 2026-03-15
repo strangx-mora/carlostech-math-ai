@@ -145,7 +145,7 @@ init_db()
 
 # ── Config email (variables de entorno) ──────────────────────────
 MAIL_HOST = os.environ.get('MAIL_HOST', 'smtp.gmail.com')
-MAIL_PORT = int(os.environ.get('MAIL_PORT', 587))
+MAIL_PORT = int(re.sub(r'[^0-9]', '', os.environ.get('MAIL_PORT', '587')) or 587)
 MAIL_USER = os.environ.get('MAIL_USER', '')   # tu Gmail
 MAIL_PASS = os.environ.get('MAIL_PASS', '')   # contraseña de aplicación
 APP_URL   = os.environ.get('APP_URL', 'https://carlostech-math-ai-production.up.railway.app')
