@@ -27,6 +27,13 @@ load_dotenv()
 app = Flask(__name__)
 Compress(app)
 app.secret_key = os.environ.get('SECRET_KEY', 'carlostech-secret-2025')
+
+@app.after_request
+def set_security_headers(resp):
+    resp.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+    resp.headers['X-Content-Type-Options'] = 'nosniff'
+    resp.headers['X-Frame-Options'] = 'SAMEORIGIN'
+    return resp
 app.config.update(
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE='Lax',
