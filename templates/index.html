@@ -148,6 +148,14 @@
 
                 <div class="nav-divider"></div>
 
+                <!-- CONTADOR DE USOS -->
+                <div id="uso-counter" style="display:none;align-items:center;gap:.4rem;background:rgba(99,102,241,.12);border:1px solid rgba(99,102,241,.25);border-radius:.5rem;padding:.3rem .65rem;font-size:.75rem;color:#a5b4fc;cursor:pointer;" onclick="openModal('modal-limite')" title="Usos hoy">
+                    <i class="fas fa-bolt" style="font-size:.7rem;"></i>
+                    <span id="uso-text">0/10</span>
+                </div>
+
+                <div class="nav-divider"></div>
+
                 <div class="nav-user" id="navUser">
                     <div class="nav-avatar">{{ username[0]|upper }}</div>
                     <div class="nav-user-info">
@@ -335,6 +343,16 @@
 
         <!-- CONTAINER -->
         <div class="container">
+
+            <!-- ADSENSE BANNER -->
+            <div style="text-align:center;margin-bottom:1.5rem;min-height:90px;">
+                <!-- Reemplaza data-ad-client y data-ad-slot con tus valores de AdSense -->
+                <!--
+                <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXX" crossorigin="anonymous"></script>
+                <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-XXXXXXXXXX" data-ad-slot="XXXXXXXXXX" data-ad-format="auto" data-full-width-responsive="true"></ins>
+                <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+                -->
+            </div>
 
             <!-- ═══ INTEGRALES ═══ -->
             <section class="input-section tool-section" id="tool-integrales">
@@ -628,6 +646,25 @@
     </main>
 
     <!-- ═══════════════ MODALES ═══════════════ -->
+
+    <!-- MODAL LÍMITE ALCANZADO -->
+    <div class="modal-backdrop" id="modal-limite">
+        <div class="modal" style="max-width:420px;text-align:center;">
+            <div class="modal-header" style="justify-content:flex-end;border:none;padding-bottom:0;">
+                <button class="modal-close" onclick="closeModal('modal-limite')"><i class="fas fa-xmark"></i></button>
+            </div>
+            <div class="modal-body" style="padding-top:.5rem;">
+                <div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,#f59e0b,#ef4444);display:flex;align-items:center;justify-content:center;font-size:1.75rem;margin:0 auto 1rem;">⚡</div>
+                <h2 style="font-size:1.25rem;font-weight:800;color:#f1f5f9;margin:0 0 .5rem;">Límite diario alcanzado</h2>
+                <p style="color:#94a3b8;font-size:.875rem;line-height:1.6;margin:0 0 1.5rem;">Has usado <strong id="limite-used" style="color:#f1f5f9;">10</strong> de <strong id="limite-max" style="color:#f1f5f9;">10</strong> cálculos gratuitos de hoy.<br>El contador se reinicia a medianoche.</p>
+                <div style="background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.2);border-radius:.75rem;padding:1rem;margin-bottom:1.25rem;">
+                    <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;color:#6366f1;margin-bottom:.5rem;">Plan Free</div>
+                    <div style="font-size:1.5rem;font-weight:800;color:#f1f5f9;">10 <span style="font-size:.875rem;font-weight:400;color:#94a3b8;">cálculos/día</span></div>
+                </div>
+                <p style="color:#64748b;font-size:.8rem;">Vuelve mañana o comparte la app con amigos 🚀</p>
+            </div>
+        </div>
+    </div>
 
     <!-- MODAL PERFIL -->
     <div class="modal-backdrop" id="modal-perfil">
@@ -1338,6 +1375,7 @@
         function resolver() {
             let latex = mathField.latex();
             if (!latex || latex.trim() === '') { alert('Por favor ingresa una expresión'); return; }
+            if (checkLimite()) return;
             let a = document.getElementById('limiteA').value || null;
             let b = document.getElementById('limiteB').value || null;
             mostrarLoading();
@@ -1349,10 +1387,32 @@
             .then(res => res.json())
             .then(data => {
                 if (!data.success) {
+                    if (data.error === 'limit_reached') {
+                        _usoUsed = data.used || _usoLimit;
+                        document.getElementById('uso-text').textContent = `${_usoUsed}/${_usoLimit}`;
+                        document.getElementById('limite-used').textContent = _usoUsed;
+                        document.getElementById('limite-max').textContent  = _usoLimit;
+                        openModal('modal-limite');
+                        document.getElementById('resultado-card').classList.add('hidden');
+                        return;
+                    }
                     mostrarError(data.error);
                     return;
                 }
                 mostrarResultadoGenerico(data.result, data.method_detected || 'General', data.computation_time);
+
+                // Actualizar contador
+                _usoUsed++;
+                const usoText = document.getElementById('uso-text');
+                if (usoText) {
+                    usoText.textContent = `${_usoUsed}/${_usoLimit}`;
+                    if (_usoUsed >= _usoLimit) {
+                        const counter = document.getElementById('uso-counter');
+                        counter.style.background = 'rgba(239,68,68,.15)';
+                        counter.style.borderColor = 'rgba(239,68,68,.35)';
+                        counter.style.color = '#fca5a5';
+                    }
+                }
 
                 // Graficar
                 const cfg = loadConfig();
@@ -1662,6 +1722,40 @@
                     .catch(err => console.warn('[SW] Error:', err));
             });
         }
+
+        // ═══════════════════════════════════════════
+        // USO DIARIO
+        // ═══════════════════════════════════════════
+        let _usoLimit = 10, _usoUsed = 0;
+
+        function cargarUso() {
+            fetch('/api/uso').then(r => r.json()).then(data => {
+                if (data.limit === null) return; // admin: sin límite
+                _usoUsed = data.used;
+                _usoLimit = data.limit;
+                const counter = document.getElementById('uso-counter');
+                const text    = document.getElementById('uso-text');
+                counter.style.display = 'flex';
+                text.textContent = `${_usoUsed}/${_usoLimit}`;
+                if (_usoUsed >= _usoLimit) {
+                    counter.style.background = 'rgba(239,68,68,.15)';
+                    counter.style.borderColor = 'rgba(239,68,68,.35)';
+                    counter.style.color = '#fca5a5';
+                }
+            }).catch(() => {});
+        }
+
+        function checkLimite() {
+            if (_usoUsed >= _usoLimit) {
+                document.getElementById('limite-used').textContent = _usoUsed;
+                document.getElementById('limite-max').textContent  = _usoLimit;
+                openModal('modal-limite');
+                return true;
+            }
+            return false;
+        }
+
+        cargarUso();
 
         // PWA: Banner instalar app
         let _deferredPrompt = null;

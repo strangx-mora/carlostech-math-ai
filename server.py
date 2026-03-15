@@ -40,6 +40,7 @@ limiter = Limiter(
 )
 
 SOLVER_TIMEOUT = int(os.environ.get('SOLVER_TIMEOUT', 12))
+FREE_DAILY_LIMIT = int(os.environ.get('FREE_DAILY_LIMIT', 10))
 
 ADMIN_USER = 'admin'
 ADMIN_HASH = generate_password_hash(os.environ.get('ADMIN_PASSWORD', 'admin123'))
@@ -104,6 +105,15 @@ def init_db():
                 steps   TEXT NOT NULL,
                 views   INTEGER NOT NULL DEFAULT 0,
                 created TEXT NOT NULL DEFAULT (datetime('now'))
+            )
+        ''')
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS usage (
+                id      INTEGER PRIMARY KEY AUTOINCREMENT,
+                user    TEXT NOT NULL,
+                day     TEXT NOT NULL,
+                count   INTEGER NOT NULL DEFAULT 1,
+                UNIQUE(user, day)
             )
         ''')
         # Migrar columna views si no existe
@@ -1100,6 +1110,33 @@ def api_cambiar_password():
     return jsonify({"ok": True})
 
 
+# ── Helpers de uso diario ───────────────────────────────────────
+
+def get_daily_usage(user):
+    today = datetime.utcnow().strftime('%Y-%m-%d')
+    with get_db() as conn:
+        row = conn.execute("SELECT count FROM usage WHERE user=? AND day=?", (user, today)).fetchone()
+    return row['count'] if row else 0
+
+def increment_usage(user):
+    today = datetime.utcnow().strftime('%Y-%m-%d')
+    with get_db() as conn:
+        conn.execute(
+            "INSERT INTO usage (user, day, count) VALUES (?,?,1) "
+            "ON CONFLICT(user, day) DO UPDATE SET count = count + 1",
+            (user, today)
+        )
+        conn.commit()
+
+@app.route("/api/uso", methods=["GET"])
+@login_required
+def api_uso():
+    user = session['user']
+    role = session.get('role', 'student')
+    used = get_daily_usage(user)
+    limit = None if role == 'admin' else FREE_DAILY_LIMIT
+    return jsonify({"used": used, "limit": limit, "role": role})
+
 # ── Helpers de caché ────────────────────────────────────────────
 
 def cache_key(expr_text, a, b):
@@ -1196,6 +1233,19 @@ def api_simplificar():
 @limiter.limit("30 per minute; 5 per second")
 def api_resolver():
     try:
+        # Verificar límite diario para usuarios free
+        user = session['user']
+        role = session.get('role', 'student')
+        if role != 'admin':
+            used = get_daily_usage(user)
+            if used >= FREE_DAILY_LIMIT:
+                return jsonify({
+                    "success": False,
+                    "error": "limit_reached",
+                    "used": used,
+                    "limit": FREE_DAILY_LIMIT
+                }), 429
+
         data = request.json or {}
         expr_text = data.get("integral", "").strip()
         a = data.get("a")
@@ -1231,6 +1281,8 @@ def api_resolver():
         # Guardar en caché si fue exitoso
         if resp.get('success'):
             cache_set(ck, resp['result'], resp['method_detected'], resp['steps'])
+            if role != 'admin':
+                increment_usage(user)
 
         return jsonify(resp), 200 if resp["success"] else 400
 

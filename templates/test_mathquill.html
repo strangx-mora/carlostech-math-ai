@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Test MathQuill</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mathquill@0.10.1/build/mathquill.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mathquill@0.10.1/build/mathquill.js"></script>
+    <style>
+        body { font-family: Arial; padding: 20px; background: #1e293b; color: #e0e7ff; }
+        .mathbox { border: 2px solid #3b82f6; padding: 10px; margin: 10px 0; background: #0f172a; }
+        button { padding: 10px 20px; background: #3b82f6; color: white; border: none; cursor: pointer; }
+        #output { background: #1e293b; padding: 10px; margin: 10px 0; border-left: 3px solid #3b82f6; }
+    </style>
+</head>
+<body>
+    <h1>Test MathQuill</h1>
+    
+    <div id="math-input" class="mathbox"></div>
+    
+    <button onclick="test()">Enviar</button>
+    
+    <div id="output"></div>
+    
+    <script>
+        var MQ = MathQuill.getInterface(2);
+        var mathField = MQ.MathField(document.getElementById('math-input'));
+        
+        function test() {
+            let latex = mathField.latex();
+            console.log("LaTeX:", latex);
+            
+            let output = document.getElementById('output');
+            output.innerHTML = `
+                <p><strong>LaTeX:</strong> ${latex}</p>
+                <p><strong>Enviando a servidor...</strong></p>
+            `;
+            
+            fetch("/api/resolver", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    integral: latex
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                console.log("Respuesta:", data);
+                output.innerHTML = `
+                    <p><strong>LaTeX:</strong> ${latex}</p>
+                    <p><strong>Success:</strong> ${data.success}</p>
+                    <p><strong>Resultado:</strong> ${data.result || data.error}</p>
+                    <p><strong>Método:</strong> ${data.method_detected}</p>
+                    <p><strong>Pasos:</strong></p>
+                    <ul>${data.steps.map(s => '<li>' + s + '</li>').join('')}</ul>
+                `;
+            })
+            .catch(err => {
+                console.error("Error:", err);
+                output.innerHTML = `<p style="color: red;">Error: ${err}</p>`;
+            });
+        }
+    </script>
+</body>
+</html>
