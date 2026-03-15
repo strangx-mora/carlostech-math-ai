@@ -208,8 +208,7 @@ def send_reset_email(to_email, token):
     </div>
     """
     msg.attach(MIMEText(html, 'html'))
-    with smtplib.SMTP(MAIL_HOST, MAIL_PORT) as s:
-        s.starttls()
+    with smtplib.SMTP_SSL(MAIL_HOST, 465) as s:
         s.login(MAIL_USER, MAIL_PASS)
         s.sendmail(MAIL_USER, to_email, msg.as_string())
 
